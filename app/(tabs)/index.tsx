@@ -1,74 +1,293 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
+import { useState, useRef } from 'react';
+import { StyleSheet, TextInput, FlatList, Image, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
+import WebView from 'react-native-webview';
+import { Ionicons } from '@expo/vector-icons';
+
+// YouTube Player States
+const YT = {
+  PlayerState: {
+    UNSTARTED: -1,
+    ENDED: 0,
+    PLAYING: 1,
+    PAUSED: 2,
+    BUFFERING: 3,
+    CUED: 5
+  }
+};
+
+interface VideoItem {
+  id: {
+    videoId: string;
+  };
+  snippet: {
+    title: string;
+    description: string;
+    thumbnails: {
+      default: {
+        url: string;
+      };
+    };
+  };
+}
 
 export default function HomeScreen() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentVideo, setCurrentVideo] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const webViewRef = useRef<WebView>(null);
+
+  const extractVideoId = (url: string): string | null => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
+  };
+
+  const togglePlayPause = () => {
+    const script = isPlaying ? 
+      'window.player.pauseVideo();' : 
+      'window.player.playVideo();';
+    
+    webViewRef.current?.injectJavaScript(script);
+  };
+
+  const handlePlayerStateChange = (state: number) => {
+    switch (state) {
+      case YT.PlayerState.PLAYING:
+        setIsPlaying(true);
+        break;
+      case YT.PlayerState.PAUSED:
+      case YT.PlayerState.ENDED:
+        setIsPlaying(false);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    const videoId = extractVideoId(searchQuery);
+    if (videoId) {
+      setCurrentVideo(videoId);
+      setVideos([]);
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&key=AIzaSyACEYxQ50HzKTOjgiouw-04SaVRrHYe4k8YOUR_API_KEY`
+      );
+      const data = await response.json();
+      setVideos(data.items || []);
+      setCurrentVideo(null);
+    } catch (error) {
+      console.error('Error searching YouTube:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderVideoItem = ({ item }: { item: VideoItem }) => (
+    <TouchableOpacity 
+      style={styles.videoItem}
+      onPress={() => setCurrentVideo(item.id.videoId)}
+    >
+      <Image
+        source={{ uri: item.snippet.thumbnails.default.url }}
+        style={styles.thumbnail}
+      />
+      <ThemedView style={styles.videoInfo}>
+        <ThemedText type="defaultSemiBold" numberOfLines={2}>
+          {item.snippet.title}
+        </ThemedText>
+        <ThemedText numberOfLines={2} style={styles.description}>
+          {item.snippet.description}
+        </ThemedText>
+      </ThemedView>
+    </TouchableOpacity>
+  );
+
+  const youtubeHTML = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://www.youtube.com/iframe_api"></script>
+        <style>
+          body { margin: 0; background: #000; }
+          .video-container { position: relative; width: 100%; height: 100%; }
+          iframe { width: 100%; height: 100%; border: none; }
+        </style>
+      </head>
+      <body>
+        <div id="player" class="video-container"></div>
+        <script>
+          function onYouTubeIframeAPIReady() {
+            window.player = new YT.Player('player', {
+              videoId: '${currentVideo}',
+              playerVars: {
+                'rel': 0,
+                'showinfo': 0,
+                'modestbranding': 1,
+                'controls': 0,
+                'autoplay': 0
+              },
+              events: {
+                'onStateChange': onPlayerStateChange,
+                'onReady': onPlayerReady
+              }
+            });
+          }
+          function onPlayerStateChange(event) {
+            window.ReactNativeWebView.postMessage(event.data);
+          }
+          function onPlayerReady(event) {
+            // Don't autoplay when ready
+            event.target.pauseVideo();
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
+    <SafeAreaView style={styles.safeArea}>
+      <ThemedView style={styles.container}>
+        <ThemedView style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search YouTube videos or paste URL..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+        </ThemedView>
+
+        {currentVideo && (
+          <ThemedView style={styles.videoContainer}>
+            <WebView
+              ref={webViewRef}
+              style={styles.video}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              source={{ html: youtubeHTML }}
+              onMessage={(event) => {
+                const state = parseInt(event.nativeEvent.data);
+                handlePlayerStateChange(state);
+              }}
+            />
+            <TouchableOpacity 
+              style={styles.playPauseButton}
+              onPress={togglePlayPause}
+            >
+              <Ionicons 
+                name={isPlaying ? "pause" : "play"} 
+                size={32} 
+                color="#fff" 
+              />
+            </TouchableOpacity>
+          </ThemedView>
+        )}
+
+        {loading ? (
+          <ActivityIndicator size="large" style={styles.loader} />
+        ) : (
+          <FlatList
+            data={videos}
+            renderItem={renderVideoItem}
+            keyExtractor={(item) => item.id.videoId}
+            contentContainerStyle={styles.listContainer}
+          />
+        )}
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+  },
+  searchContainer: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    backgroundColor: '#1a1a1a',
+  },
+  searchInput: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    backgroundColor: '#333',
+    color: '#fff',
+  },
+  videoContainer: {
+    width: Dimensions.get('window').width,
+    height: 240,
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  video: {
+    flex: 1,
+  },
+  listContainer: {
+    padding: 16,
+  },
+  videoItem: {
     flexDirection: 'row',
+    marginBottom: 16,
+    backgroundColor: '#333',
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  thumbnail: {
+    width: 120,
+    height: 90,
+  },
+  videoInfo: {
+    flex: 1,
+    padding: 8,
+  },
+  description: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  playPauseButton: {
     position: 'absolute',
+    bottom: 16,
+    right: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
