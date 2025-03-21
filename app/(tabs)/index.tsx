@@ -61,8 +61,11 @@ export default function HomeScreen() {
         setIsPlaying(true);
         break;
       case YT.PlayerState.PAUSED:
-      case YT.PlayerState.ENDED:
         setIsPlaying(false);
+        break;
+      case YT.PlayerState.ENDED:
+        // Restart the video when it ends
+        webViewRef.current?.injectJavaScript('window.player.seekTo(0); window.player.playVideo();');
         break;
       default:
         break;
@@ -137,7 +140,9 @@ export default function HomeScreen() {
                 'showinfo': 0,
                 'modestbranding': 1,
                 'controls': 0,
-                'autoplay': 0
+                'autoplay': 0,
+                'loop': 1,
+                'playlist': '${currentVideo}'
               },
               events: {
                 'onStateChange': onPlayerStateChange,
