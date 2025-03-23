@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { StyleSheet, TextInput, FlatList, Image, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '../components/ThemedView';
+import { ThemedText } from '../components/ThemedText';
+import { SessionTimer } from '../components/SessionTimer';
 import WebView from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -168,7 +169,7 @@ export default function HomeScreen() {
         <ThemedView style={styles.mainContent}>
           <ThemedView style={styles.headerContent}>
             <ThemedText style={styles.heading}>
-              Download, edit, save and loop YouTube videos
+              Download, Edit, Save and Loop YouTube Videos
             </ThemedText>
           </ThemedView>
           
@@ -227,6 +228,7 @@ export default function HomeScreen() {
             />
           </ThemedView>
         )}
+        <SessionTimer variant="main" />
       </ThemedView>
     </SafeAreaView>
   );
