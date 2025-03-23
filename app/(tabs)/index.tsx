@@ -165,15 +165,51 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
-        <ThemedView style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search YouTube videos or paste URL..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
+        <ThemedView style={styles.mainContent}>
+          <ThemedView style={styles.headerContent}>
+            <ThemedText style={styles.heading}>
+              Download, edit, save and loop YouTube videos
+            </ThemedText>
+          </ThemedView>
+          
+          <ThemedView style={styles.searchContent}>
+            <ThemedView style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search YouTube videos or paste URL..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+              />
+            </ThemedView>
+          </ThemedView>
+
+          <ThemedView style={styles.controlsContainer}>
+            <TouchableOpacity 
+              style={[styles.controlButton, !currentVideo && styles.controlButtonDisabled]}
+              onPress={togglePlayPause}
+              disabled={!currentVideo}
+            >
+              <Ionicons 
+                name={isPlaying ? "pause" : "play"} 
+                size={32} 
+                color="#fff" 
+              />
+            </TouchableOpacity>
+          </ThemedView>
+
+          {loading ? (
+            <ActivityIndicator size="large" style={styles.loader} />
+          ) : (
+            <FlatList
+              data={videos}
+              renderItem={renderVideoItem}
+              keyExtractor={(item) => item.id.videoId}
+              contentContainerStyle={styles.listContainer}
+              style={styles.list}
+            />
+          )}
         </ThemedView>
 
         {currentVideo && (
@@ -189,28 +225,7 @@ export default function HomeScreen() {
                 handlePlayerStateChange(state);
               }}
             />
-            <TouchableOpacity 
-              style={styles.playPauseButton}
-              onPress={togglePlayPause}
-            >
-              <Ionicons 
-                name={isPlaying ? "pause" : "play"} 
-                size={32} 
-                color="#fff" 
-              />
-            </TouchableOpacity>
           </ThemedView>
-        )}
-
-        {loading ? (
-          <ActivityIndicator size="large" style={styles.loader} />
-        ) : (
-          <FlatList
-            data={videos}
-            renderItem={renderVideoItem}
-            keyExtractor={(item) => item.id.videoId}
-            contentContainerStyle={styles.listContainer}
-          />
         )}
       </ThemedView>
     </SafeAreaView>
@@ -226,11 +241,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
+  mainContent: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+  },
+  headerContent: {
+    flex: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  searchContent: {
+    flex: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+    color: '#fff',
+  },
   searchContainer: {
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
     backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    width: '100%',
   },
   searchInput: {
     height: 40,
@@ -241,6 +280,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#333',
     color: '#fff',
+    width: '80%',
+  },
+  controlsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#1a1a1a',
+  },
+  controlButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#00a86b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  controlButtonDisabled: {
+    backgroundColor: '#333',
+    opacity: 0.7,
   },
   videoContainer: {
     width: Dimensions.get('window').width,
@@ -284,15 +348,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  playPauseButton: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  list: {
+    padding: 16,
   },
 });
