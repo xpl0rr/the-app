@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
-import { StyleSheet, TextInput, FlatList, Image, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { StyleSheet, TextInput, FlatList, Image, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
 import { SessionTimer } from '../components/SessionTimer';
+import { VideoEditor } from '../components/VideoEditor';
 import WebView from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -40,6 +41,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [currentVideoTitle, setCurrentVideoTitle] = useState('');
   const webViewRef = useRef<WebView>(null);
 
   const extractVideoId = (url: string): string | null => {
@@ -60,16 +63,41 @@ export default function HomeScreen() {
     switch (state) {
       case YT.PlayerState.PLAYING:
         setIsPlaying(true);
+        // Get video duration when it starts playing
+        webViewRef.current?.injectJavaScript(`
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'duration',
+            value: window.player.getDuration()
+          }));
+          true;
+        `);
         break;
       case YT.PlayerState.PAUSED:
         setIsPlaying(false);
         break;
       case YT.PlayerState.ENDED:
-        // Restart the video when it ends
         webViewRef.current?.injectJavaScript('window.player.seekTo(0); window.player.playVideo();');
         break;
       default:
         break;
+    }
+  };
+
+  const handleVideoSelect = (video: VideoItem) => {
+    setCurrentVideo(video.id.videoId);
+    setCurrentVideoTitle(video.snippet.title);
+  };
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'duration') {
+        setVideoDuration(data.value);
+      } else {
+        handlePlayerStateChange(parseInt(event.nativeEvent.data));
+      }
+    } catch {
+      handlePlayerStateChange(parseInt(event.nativeEvent.data));
     }
   };
 
@@ -101,7 +129,7 @@ export default function HomeScreen() {
   const renderVideoItem = ({ item }: { item: VideoItem }) => (
     <TouchableOpacity 
       style={styles.videoItem}
-      onPress={() => setCurrentVideo(item.id.videoId)}
+      onPress={() => handleVideoSelect(item)}
     >
       <Image
         source={{ uri: item.snippet.thumbnails.default.url }}
@@ -166,68 +194,64 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
-        <ThemedView style={styles.mainContent}>
-          <ThemedView style={styles.headerContent}>
-            <ThemedText style={styles.heading}>
-              Download, Edit, Save and Loop YouTube Videos
-            </ThemedText>
-          </ThemedView>
-          
-          <ThemedView style={styles.searchContent}>
-            <ThemedView style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search YouTube videos or paste URL..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearch}
-                returnKeyType="search"
-              />
+        <ScrollView style={styles.scrollView}>
+          <ThemedView style={styles.mainContent}>
+            <ThemedView style={styles.headerContent}>
+              <ThemedText style={styles.heading}>
+                Download, Edit, Save and Loop YouTube Videos
+              </ThemedText>
             </ThemedView>
-          </ThemedView>
+            
+            <ThemedView style={styles.searchContent}>
+              <ThemedView style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search YouTube videos or paste URL..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  onSubmitEditing={handleSearch}
+                  returnKeyType="search"
+                />
+              </ThemedView>
 
-          <ThemedView style={styles.controlsContainer}>
-            <TouchableOpacity 
-              style={[styles.controlButton, !currentVideo && styles.controlButtonDisabled]}
-              onPress={togglePlayPause}
-              disabled={!currentVideo}
-            >
-              <Ionicons 
-                name={isPlaying ? "pause" : "play"} 
-                size={32} 
-                color="#fff" 
+              {currentVideo && (
+                <ThemedView style={styles.videoContainer}>
+                  <WebView
+                    ref={webViewRef}
+                    style={styles.video}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                    source={{ html: youtubeHTML }}
+                    onMessage={handleMessage}
+                  />
+                </ThemedView>
+              )}
+
+              {videoDuration > 0 && (
+                <VideoEditor
+                  videoId={currentVideo!}
+                  title={currentVideoTitle}
+                  duration={videoDuration}
+                  onSave={() => {}}
+                  webViewRef={webViewRef}
+                />
+              )}
+            </ThemedView>
+
+            {loading ? (
+              <ActivityIndicator size="large" style={styles.loader} />
+            ) : (
+              <FlatList
+                data={videos}
+                renderItem={renderVideoItem}
+                keyExtractor={(item) => item.id.videoId}
+                contentContainerStyle={styles.listContainer}
+                style={styles.list}
+                scrollEnabled={false}
               />
-            </TouchableOpacity>
+            )}
           </ThemedView>
-
-          {loading ? (
-            <ActivityIndicator size="large" style={styles.loader} />
-          ) : (
-            <FlatList
-              data={videos}
-              renderItem={renderVideoItem}
-              keyExtractor={(item) => item.id.videoId}
-              contentContainerStyle={styles.listContainer}
-              style={styles.list}
-            />
-          )}
-        </ThemedView>
-
-        {currentVideo && (
-          <ThemedView style={styles.videoContainer}>
-            <WebView
-              ref={webViewRef}
-              style={styles.video}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              source={{ html: youtubeHTML }}
-              onMessage={(event) => {
-                const state = parseInt(event.nativeEvent.data);
-                handlePlayerStateChange(state);
-              }}
-            />
-          </ThemedView>
-        )}
+        </ScrollView>
         <SessionTimer variant="main" />
       </ThemedView>
     </SafeAreaView>
@@ -243,21 +267,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
-  mainContent: {
+  scrollView: {
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
-  headerContent: {
-    flex: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
+  mainContent: {
     backgroundColor: '#1a1a1a',
+    paddingBottom: 120,
+  },
+  headerContent: {
+    backgroundColor: '#1a1a1a',
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   searchContent: {
-    flex: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    width: '100%',
   },
   heading: {
     fontSize: 24,
@@ -283,42 +309,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
     color: '#fff',
     width: '80%',
+    marginBottom: 16,
   },
-  controlsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 16,
-    backgroundColor: '#1a1a1a',
-  },
-  controlButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#00a86b',
-    justifyContent: 'center',
-    alignItems: 'center',
+  videoContainer: {
+    width: '90%',
+    height: 240,
+    backgroundColor: '#000',
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  controlButtonDisabled: {
-    backgroundColor: '#333',
-    opacity: 0.7,
-  },
-  videoContainer: {
-    width: Dimensions.get('window').width,
-    height: 240,
-    backgroundColor: '#000',
-    position: 'relative',
+    shadowRadius: 3.84,
+    marginTop: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignSelf: 'center',
   },
   video: {
     flex: 1,
+    backgroundColor: '#000',
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 80,
   },
   videoItem: {
     flexDirection: 'row',
@@ -351,6 +364,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   list: {
-    padding: 16,
+    width: '100%',
+    marginTop: 16,
   },
 });
