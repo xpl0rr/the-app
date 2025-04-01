@@ -93,11 +93,18 @@ export default function HomeScreen() {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'duration') {
         setVideoDuration(data.value);
+      } else if (data.type === 'currentTime') {
+        // Handle current time updates from the WebView
+        // This is used by the VideoEditor component
       } else {
         handlePlayerStateChange(parseInt(event.nativeEvent.data));
       }
-    } catch {
-      handlePlayerStateChange(parseInt(event.nativeEvent.data));
+    } catch (error) {
+      try {
+        handlePlayerStateChange(parseInt(event.nativeEvent.data));
+      } catch (e) {
+        console.error('Error handling WebView message:', e);
+      }
     }
   };
 
@@ -107,20 +114,30 @@ export default function HomeScreen() {
     const videoId = extractVideoId(searchQuery);
     if (videoId) {
       setCurrentVideo(videoId);
+      setCurrentVideoTitle('YouTube Video');
       setVideos([]);
       return;
     }
     
     setLoading(true);
     try {
+      // Replace with a valid API key - this is just a placeholder
+      const API_KEY = 'AIzaSyBfQ_IQd6-0pKydm5mF33lIt8bhxHH1-qo';
+      
       const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&key=AIzaSyACEYxQ50HzKTOjgiouw-04SaVRrHYe4k8YOUR_API_KEY`
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&key=${API_KEY}`
       );
       const data = await response.json();
+      if (data.error) {
+        console.error('YouTube API Error:', data.error.message);
+        alert('YouTube API Error: ' + data.error.message);
+        return;
+      }
       setVideos(data.items || []);
       setCurrentVideo(null);
     } catch (error) {
       console.error('Error searching YouTube:', error);
+      alert('Failed to search YouTube. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -168,7 +185,7 @@ export default function HomeScreen() {
                 'rel': 0,
                 'showinfo': 0,
                 'modestbranding': 1,
-                'controls': 0,
+                'controls': 1,
                 'autoplay': 0,
                 'loop': 1,
                 'playlist': '${currentVideo}'
@@ -185,7 +202,22 @@ export default function HomeScreen() {
           function onPlayerReady(event) {
             // Don't autoplay when ready
             event.target.pauseVideo();
+            // Get duration immediately
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'duration',
+              value: event.target.getDuration()
+            }));
           }
+
+          // Setup listener for current time updates
+          setInterval(function() {
+            if (window.player && window.player.getCurrentTime) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'currentTime',
+                value: window.player.getCurrentTime()
+              }));
+            }
+          }, 1000);
         </script>
       </body>
     </html>

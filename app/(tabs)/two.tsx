@@ -1,10 +1,12 @@
 import { StyleSheet } from 'react-native';
 import { ThemedView } from '../components/ThemedView';
 import { SessionTimer } from '../components/SessionTimer';
+import { VideoStorage } from '../components/VideoStorage';
 
 export default function PracticeSummaryScreen() {
   return (
     <ThemedView style={styles.container}>
+      <VideoStorage />
       <SessionTimer />
     </ThemedView>
   );
