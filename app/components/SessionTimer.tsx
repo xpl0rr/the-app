@@ -1,15 +1,16 @@
-import React from 'react';
-import { StyleSheet, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Platform, TouchableOpacity, Alert, View } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { useTimer } from '../context/TimerContext';
+import { Ionicons } from '@expo/vector-icons';
 
 interface SessionTimerProps {
   variant?: 'main' | 'practice';
 }
 
 export function SessionTimer({ variant = 'practice' }: SessionTimerProps) {
-  const { elapsedTime } = useTimer();
+  const { elapsedTime, totalTime, resetTotalTime } = useTimer();
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -19,15 +20,43 @@ export function SessionTimer({ variant = 'practice' }: SessionTimerProps) {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  const handleResetPress = () => {
+    Alert.alert(
+      'Reset Timer',
+      'Are you sure you want to reset the total time counter?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Reset', 
+          style: 'destructive',
+          onPress: resetTotalTime
+        }
+      ]
+    );
+  };
+
   return (
     <ThemedView style={[
       styles.container,
       variant === 'main' && styles.mainContainer,
       variant === 'practice' && styles.practiceContainer
     ]}>
-      <ThemedText style={styles.timerText}>
-        Session: {formatTime(elapsedTime)}
-      </ThemedText>
+      <View style={styles.timerContent}>
+        <ThemedText style={styles.timerText}>
+          {variant === 'main' 
+            ? `Session: ${formatTime(elapsedTime)}` 
+            : `Total: ${formatTime(totalTime)}`}
+        </ThemedText>
+        
+        {variant === 'practice' && (
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleResetPress}
+          >
+            <Ionicons name="refresh" size={16} color="#ff4444" />
+          </TouchableOpacity>
+        )}
+      </View>
     </ThemedView>
   );
 }
@@ -53,9 +82,17 @@ const styles = StyleSheet.create({
   practiceContainer: {
     bottom: Platform.OS === 'ios' ? 100 : 80,
   },
+  timerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   timerText: {
     fontSize: 16,
     color: '#fff',
     fontWeight: '600',
+  },
+  resetButton: {
+    marginLeft: 8,
+    padding: 4,
   },
 }); 

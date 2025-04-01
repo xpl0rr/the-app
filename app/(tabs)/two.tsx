@@ -3,11 +3,11 @@ import { ThemedView } from '../components/ThemedView';
 import { SessionTimer } from '../components/SessionTimer';
 import { VideoStorage } from '../components/VideoStorage';
 
-export default function PracticeSummaryScreen() {
+export default function SavedClipsScreen() {
   return (
     <ThemedView style={styles.container}>
       <VideoStorage />
-      <SessionTimer />
+      <SessionTimer variant="practice" />
     </ThemedView>
   );
 }

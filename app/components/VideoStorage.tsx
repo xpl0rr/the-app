@@ -161,7 +161,7 @@ export function VideoStorage() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.sectionTitle}>Saved Videos</ThemedText>
+      <ThemedText style={styles.sectionTitle}>Saved Clips</ThemedText>
       <ScrollView style={styles.scrollView}>
         {savedVideos.map(video => (
           <ThemedView key={video.id} style={styles.videoItem}>
@@ -185,7 +185,7 @@ export function VideoStorage() {
         ))}
         {savedVideos.length === 0 && (
           <ThemedText style={styles.emptyText}>
-            No saved videos yet. Save videos from the main page to practice with them later.
+            No saved clips yet. Save videos from the main page to watch them later.
           </ThemedText>
         )}
       </ScrollView>
