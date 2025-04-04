@@ -122,7 +122,8 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       // Replace with a valid API key - this is just a placeholder
-      const API_KEY = 'AIzaSyBfQ_IQd6-0pKydm5mF33lIt8bhxHH1-qo';
+      // const API_KEY = 'AIzaSyBfQ_IQd6-0pKydm5mF33lIt8bhxHH1-qo';
+      const API_KEY = 'AIzaSyACEYxQ50HzKTOjgiouw-04SaVRrHYe4k8';
       
       const response = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&key=${API_KEY}`
