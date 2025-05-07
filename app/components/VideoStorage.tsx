@@ -1,11 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import WebView from 'react-native-webview';
-import { useFocusEffect } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 
 interface SavedVideo {
   id: string;
@@ -34,11 +34,13 @@ export function VideoStorage() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
+  // Reload saved videos when screen is focused
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (isFocused) {
       loadSavedVideos();
-    }, [])
-  );
+    }
+  }, [isFocused]);
 
   const deleteVideo = async (id: string) => {
     try {
