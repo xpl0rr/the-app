@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   StyleSheet,
+  View,
   TextInput,
   FlatList,
   Image,
@@ -148,7 +149,90 @@ export default function HomeScreen() {
     }
   };
 
-  /* ───────── UI render functions (unchanged) ───────── */
-  // ... renderVideoItem, youtubeHTML, return(), StyleSheet remain as-is ...
+  /* UI render functions */
+  const renderVideoItem = ({ item }: { item: VideoItem }) => (
+    <TouchableOpacity onPress={() => handleVideoSelect(item)}>
+      <Image source={{ uri: item.snippet.thumbnails.default.url }} style={styles.thumbnail} />
+      <ThemedText style={styles.videoTitle}>{item.snippet.title}</ThemedText>
+    </TouchableOpacity>
+  );
 
+  const youtubeHTML = `
+    <html>
+      <body style="margin:0">
+        <div id="player"></div>
+        <script>
+          var tag = document.createElement('script');
+          tag.src = "https://www.youtube.com/iframe_api";
+          var firstScriptTag = document.getElementsByTagName('script')[0];
+          firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+          function onYouTubeIframeAPIReady() {
+            window.player = new YT.Player('player', {
+              height: '100%',
+              width: '100%',
+              videoId: '${currentVideo}',
+              events: {
+                'onStateChange': function(e) {
+                  window.ReactNativeWebView.postMessage(e.data.toString());
+                }
+              }
+            });
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
+  // Styles for HomeScreen UI, moved above return
+  const styles = StyleSheet.create({
+    container: { flex: 1, padding: 16 },
+    searchContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    input: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 4, paddingHorizontal: 8 },
+    thumbnail: { width: '100%', height: 200, marginBottom: 8 },
+    videoTitle: { marginBottom: 16 },
+  });
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Search YouTube"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearch}
+        />
+        <TouchableOpacity onPress={handleSearch}>
+          <Ionicons name="search" size={24} />
+        </TouchableOpacity>
+      </View>
+      {loading && <ActivityIndicator />}
+      {currentVideo && (
+        <>
+          <WebView
+            key={currentVideo}
+            ref={webViewRef}
+            source={{ html: youtubeHTML }}
+            onMessage={handleMessage}
+            style={{ height: 200, width: Dimensions.get('window').width }}
+          />
+          <VideoEditor
+            videoId={currentVideo}
+            title={currentVideoTitle}
+            duration={videoDuration}
+            onSave={() => setCurrentVideo(null)}
+            webViewRef={webViewRef}
+          />
+        </>
+      )}
+      {!currentVideo && !loading && (
+        <FlatList
+          data={videos}
+          keyExtractor={item => item.id.videoId}
+          renderItem={renderVideoItem}
+        />
+      )}
+    </SafeAreaView>
+  );
 }
