@@ -5,7 +5,7 @@ import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import WebView from 'react-native-webview';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface SavedVideo {
   id: string;
