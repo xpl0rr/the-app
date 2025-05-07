@@ -1,8 +1,8 @@
 // app.config.js
-import "dotenv/config"; // loads .env at build-time
+import "dotenv/config";
 
 export default ({ config }) => ({
-  /** ───────────────── basic metadata ───────────────── */
+  /* ─────────────── basic metadata ─────────────── */
   name: "Looper",
   slug: "looper",
   version: "1.0.0",
@@ -13,16 +13,14 @@ export default ({ config }) => ({
   scheme: "looper",
   userInterfaceStyle: "automatic",
 
-  /** ───────────────── secure keys & EAS project ───── */
+  /* ─────────────── secure keys ─────────────── */
   extra: {
     ...(config.extra || {}),
     googleApiKey: process.env.GOOGLE_API_KEY,
-    eas: {
-      projectId: "b8df7beb-58e2-487e-b6ea-63d4db151331", // ← new projectId
-    },
+    // ⚠️  Leave out eas.projectId for now – we’ll add it after configure
   },
 
-  /** ───────────────── iOS settings ───────────────── */
+  /* ─────────────── iOS settings ─────────────── */
   ios: {
     ...config.ios,
     bundleIdentifier: "com.xpl0rr.looper",
@@ -30,7 +28,7 @@ export default ({ config }) => ({
     supportsTablet: true,
   },
 
-  /** ───────────────── Android settings ────────────── */
+  /* ─────────────── Android settings ─────────── */
   android: {
     ...config.android,
     package: "com.xpl0rr.looper",
@@ -41,14 +39,14 @@ export default ({ config }) => ({
     runtimeVersion: { policy: "appVersion" },
   },
 
-  /** ───────────────── Web / static build ──────────── */
+  /* ─────────────── Web build ─────────────── */
   web: {
     bundler: "metro",
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
 
-  /** ───────────────── Plugins & experiments ───────── */
+  /* ─────────────── Plugins & flags ─────────── */
   plugins: [
     "expo-router",
     [
@@ -63,9 +61,7 @@ export default ({ config }) => ({
   ],
   experiments: { typedRoutes: true },
 
-  /** ───────────────── OTA / owner info ────────────── */
+  /* ─────────────── OTA / owner ─────────────── */
   owner: "xplorr",
-  updates: {
-    url: "https://u.expo.dev/b8df7beb-58e2-487e-b6ea-63d4db151331",
-  },
+  // updates.url will be added automatically when we paste the new projectId
 });
