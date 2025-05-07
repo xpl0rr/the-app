@@ -206,8 +206,16 @@ export default function HomeScreen() {
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}
         />
-        <TouchableOpacity onPress={handleSearch}>
-          <Ionicons name="search" size={24} />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={() => { setSearchQuery(''); setVideos([]); }}
+            style={{ marginLeft: 8 }}
+          >
+            <Ionicons name="close-circle" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity onPress={handleSearch} style={{ marginLeft: 8 }}>
+          <Ionicons name="search" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
       {loading && <ActivityIndicator />}
