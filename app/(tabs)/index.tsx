@@ -191,10 +191,12 @@ export default function HomeScreen() {
     input: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 4, paddingHorizontal: 8 },
     thumbnail: { width: '100%', height: 200, marginBottom: 8 },
     videoTitle: { marginBottom: 16 },
+    header: { fontSize: 24, fontWeight: 'bold', marginBottom: 12, alignSelf: 'center' },
   });
 
   return (
     <SafeAreaView style={styles.container}>
+      <ThemedText style={styles.header}>Download and loop videos</ThemedText>
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.input}
@@ -233,6 +235,7 @@ export default function HomeScreen() {
           renderItem={renderVideoItem}
         />
       )}
+      <SessionTimer variant="main" />
     </SafeAreaView>
   );
 }
