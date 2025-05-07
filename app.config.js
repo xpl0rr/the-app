@@ -13,11 +13,13 @@ export default ({ config }) => ({
   scheme: "looper",
   userInterfaceStyle: "automatic",
 
-  /* ─────────────── secure keys ─────────────── */
+  /* ─────────────── secure keys & EAS project ───── */
   extra: {
     ...(config.extra || {}),
     googleApiKey: process.env.GOOGLE_API_KEY,
-    // ⚠️  Leave out eas.projectId for now – we’ll add it after configure
+    eas: {
+      projectId: "7cf84943-4995-4348-91d4-6a808797415b",
+    },
   },
 
   /* ─────────────── iOS settings ─────────────── */
@@ -63,5 +65,7 @@ export default ({ config }) => ({
 
   /* ─────────────── OTA / owner ─────────────── */
   owner: "xplorr",
-  // updates.url will be added automatically when we paste the new projectId
+  updates: {
+    url: "https://u.expo.dev/7cf84943-4995-4348-91d4-6a808797415b",
+  },
 });
