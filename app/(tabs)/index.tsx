@@ -236,7 +236,7 @@ export default function HomeScreen() {
           renderItem={renderVideoItem}
         />
       )}
-      <SessionTimer variant="main" />
+      {!currentVideo && <SessionTimer variant="main" />}
     </SafeAreaView>
   );
 }
