@@ -14,7 +14,7 @@ export default ({ config }) => ({
   icon: "./assets/images/icon.png",
   scheme: "the-app",
   userInterfaceStyle: "automatic",
-  newArchEnabled: false,
+  
 
   /** ───────────────── iOS settings ───────────────── */
   ios: {
