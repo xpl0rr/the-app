@@ -26,7 +26,7 @@ export default ({ config }) => ({
   ios: {
     ...config.ios,
     bundleIdentifier: "com.xpl0rr.looper",
-    runtimeVersion: { policy: "appVersion" },
+    runtimeVersion: "1.0.0",
     supportsTablet: true,
   },
 
@@ -38,7 +38,7 @@ export default ({ config }) => ({
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
-    runtimeVersion: { policy: "appVersion" },
+    runtimeVersion: "1.0.0",
   },
 
   /* ─────────────── Web build ─────────────── */
