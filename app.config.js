@@ -1,36 +1,39 @@
 // app.config.js
-import "dotenv/config";            // loads .env at build-time
+import "dotenv/config"; // loads .env at build-time
 
 export default ({ config }) => ({
   /** ───────────────── basic metadata ───────────────── */
   name: "Looper",
-  slug: "the-app",
+  slug: "looper",
   version: "1.0.0",
-
-  /** If you ever upgrade Expo SDK, bump only this: */
   sdkVersion: "53.0.0",
 
   orientation: "portrait",
   icon: "./assets/images/icon.png",
-  scheme: "the-app",
+  scheme: "looper",
   userInterfaceStyle: "automatic",
-  // Load secure keys from environment
+
+  /** ───────────────── secure keys & EAS project ───── */
   extra: {
+    ...(config.extra || {}),
     googleApiKey: process.env.GOOGLE_API_KEY,
+    eas: {
+      projectId: "b8df7beb-58e2-487e-b6ea-63d4db151331", // ← new projectId
+    },
   },
 
   /** ───────────────── iOS settings ───────────────── */
   ios: {
     ...config.ios,
-    bundleIdentifier: "com.xpl0rr.theapp",
-    runtimeVersion: "1.0.0",
+    bundleIdentifier: "com.xpl0rr.looper",
+    runtimeVersion: { policy: "appVersion" },
     supportsTablet: true,
   },
 
   /** ───────────────── Android settings ────────────── */
   android: {
     ...config.android,
-    package: "com.xpl0rr.theapp",          // matches iOS ID for clarity
+    package: "com.xpl0rr.looper",
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#ffffff",
@@ -58,21 +61,11 @@ export default ({ config }) => ({
       },
     ],
   ],
-  experiments: {
-    typedRoutes: true,
-  },
-
-  /** ───────────────── Extra values (exposed at runtime) ───────────── */
-  extra: {
-    eas: {
-      projectId: "00313952-01bd-448b-bdf6-e3a180b78cc3",
-    },
-    router: { origin: false },
-  },
+  experiments: { typedRoutes: true },
 
   /** ───────────────── OTA / owner info ────────────── */
   owner: "xplorr",
   updates: {
-    url: "https://u.expo.dev/00313952-01bd-448b-bdf6-e3a180b78cc3",
+    url: "https://u.expo.dev/b8df7beb-58e2-487e-b6ea-63d4db151331",
   },
 });
