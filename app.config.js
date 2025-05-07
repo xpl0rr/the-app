@@ -3,7 +3,7 @@ import "dotenv/config";            // loads .env at build-time
 
 export default ({ config }) => ({
   /** ───────────────── basic metadata ───────────────── */
-  name: "the-app",
+  name: "Looper",
   slug: "the-app",
   version: "1.0.0",
 
