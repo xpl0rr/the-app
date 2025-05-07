@@ -188,7 +188,7 @@ export default function HomeScreen() {
   const styles = StyleSheet.create({
     container: { flex: 1, padding: 16 },
     searchContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    input: { flex: 1, height: 50, borderWidth: 1, borderColor: '#ccc', borderRadius: 4, paddingHorizontal: 8 },
+    input: { flex: 1, height: 50, borderWidth: 1, borderColor: '#ccc', borderRadius: 4, paddingHorizontal: 8, color: '#fff' },
     thumbnail: { width: '100%', height: 200, marginBottom: 8 },
     videoTitle: { marginBottom: 16 },
     header: { fontSize: 24, fontWeight: 'normal', marginBottom: 12, alignSelf: 'center', textAlign: 'center' },
@@ -201,6 +201,7 @@ export default function HomeScreen() {
         <TextInput
           style={styles.input}
           placeholder="Search YouTube"
+          placeholderTextColor="#fff"
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}

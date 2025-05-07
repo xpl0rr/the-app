@@ -77,10 +77,10 @@ const styles = StyleSheet.create({
     width: 'auto',
   },
   mainContainer: {
-    bottom: Platform.OS === 'ios' ? 65 : 45,
+    bottom: Platform.OS === 'ios' ? 71 : 51,
   },
   practiceContainer: {
-    bottom: Platform.OS === 'ios' ? 100 : 80,
+    bottom: Platform.OS === 'ios' ? 106 : 86,
   },
   timerContent: {
     flexDirection: 'row',

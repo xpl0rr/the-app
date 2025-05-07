@@ -48,6 +48,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="clock-o" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          tabBarButton: () => null,
+        }}
+      />
     </Tabs>
   );
 }
