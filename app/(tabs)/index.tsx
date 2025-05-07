@@ -196,7 +196,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ThemedText style={styles.header}>Download and loop videos</ThemedText>
+      <ThemedText style={styles.header}>Download and Loop Videos</ThemedText>
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.input}

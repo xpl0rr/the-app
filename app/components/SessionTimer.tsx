@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     width: 'auto',
   },
   mainContainer: {
-    bottom: Platform.OS === 'ios' ? 71 : 51,
+    bottom: Platform.OS === 'ios' ? 106 : 86,
   },
   practiceContainer: {
     bottom: Platform.OS === 'ios' ? 106 : 86,
