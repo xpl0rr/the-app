@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, View, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
@@ -22,6 +22,11 @@ export function VideoStorage() {
   const [selectedVideo, setSelectedVideo] = useState<SavedVideo | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const webViewRef = useRef<WebView>(null);
+
+  // Rename dialog state
+  const [renameModalVisible, setRenameModalVisible] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
 
   const loadSavedVideos = async () => {
     try {
@@ -164,6 +169,31 @@ export function VideoStorage() {
     `;
   };
 
+  const handleRenamePress = (video: SavedVideo) => {
+    setRenameValue(video.title);
+    setRenameTargetId(video.id);
+    setRenameModalVisible(true);
+  };
+
+  const handleCancelRename = () => {
+    setRenameModalVisible(false);
+    setRenameValue('');
+    setRenameTargetId(null);
+  };
+
+  const handleSaveRename = async () => {
+    if (!renameTargetId) return;
+    try {
+      const updated = savedVideos.map(v => v.id === renameTargetId ? { ...v, title: renameValue } : v);
+      await AsyncStorage.setItem('savedVideos', JSON.stringify(updated));
+      setSavedVideos(updated);
+    } catch (error) {
+      console.error('Error renaming video:', error);
+    } finally {
+      setRenameModalVisible(false);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ThemedText style={styles.sectionTitle}>Saved Clips</ThemedText>
@@ -179,6 +209,9 @@ export function VideoStorage() {
                 {video.isClip ? `Clip: ${formatTime(video.startTime || 0)} - ${formatTime(video.endTime || 0)}` : 'Full Video'}
               </ThemedText>
               <ThemedText style={styles.tapToPlay}>Tap to play</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.renameButton} onPress={() => handleRenamePress(video)}>
+              <Ionicons name="pencil" size={24} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.deleteButton}
@@ -223,6 +256,33 @@ export function VideoStorage() {
           </ThemedView>
         </ThemedView>
       </Modal>
+
+      {/* Rename Video Modal */}
+      <Modal
+        visible={renameModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCancelRename}
+      >
+        <ThemedView style={styles.renameModalContainer}>
+          <ThemedText style={styles.renameModalTitle}>Rename Video</ThemedText>
+          <TextInput
+            style={styles.renameInput}
+            value={renameValue}
+            onChangeText={setRenameValue}
+            placeholder="New title"
+            placeholderTextColor="#999"
+          />
+          <View style={styles.renameButtons}>
+            <TouchableOpacity onPress={handleCancelRename}>
+              <ThemedText>Cancel</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSaveRename}>
+              <ThemedText>Save</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </ThemedView>
+      </Modal>
     </ThemedView>
   );
 }
@@ -239,9 +299,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    fontSize: 24,
+    fontWeight: 'normal',
+    alignSelf: 'center',
+    textAlign: 'center',
+    marginTop: 32,
+    marginBottom: 12,
     color: '#fff',
   },
   scrollView: {
@@ -277,6 +340,10 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 8,
+  },
+  renameButton: {
+    padding: 8,
+    marginRight: 8,
   },
   emptyText: {
     textAlign: 'center',
@@ -314,5 +381,33 @@ const styles = StyleSheet.create({
   },
   webView: {
     flex: 1,
-  }
+  },
+  renameModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    padding: 16,
+  },
+  renameModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#fff',
+  },
+  renameInput: {
+    width: '100%',
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    color: '#fff',
+    marginBottom: 12,
+  },
+  renameButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
 }); 
