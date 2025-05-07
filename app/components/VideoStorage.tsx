@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import WebView from 'react-native-webview';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface SavedVideo {
   id: string;
@@ -22,10 +23,6 @@ export function VideoStorage() {
   const [modalVisible, setModalVisible] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
-  useEffect(() => {
-    loadSavedVideos();
-  }, []);
-
   const loadSavedVideos = async () => {
     try {
       const saved = await AsyncStorage.getItem('savedVideos');
@@ -36,6 +33,12 @@ export function VideoStorage() {
       console.error('Error loading saved videos:', error);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedVideos();
+    }, [])
+  );
 
   const deleteVideo = async (id: string) => {
     try {
