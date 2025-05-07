@@ -14,7 +14,10 @@ export default ({ config }) => ({
   icon: "./assets/images/icon.png",
   scheme: "the-app",
   userInterfaceStyle: "automatic",
-  
+  // Load secure keys from environment
+  extra: {
+    googleApiKey: process.env.GOOGLE_API_KEY,
+  },
 
   /** ───────────────── iOS settings ───────────────── */
   ios: {
@@ -64,7 +67,6 @@ export default ({ config }) => ({
     eas: {
       projectId: "00313952-01bd-448b-bdf6-e3a180b78cc3",
     },
-    googleApiKey: process.env.GOOGLE_API_KEY,   // ← comes from .env
     router: { origin: false },
   },
 
