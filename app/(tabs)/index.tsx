@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,18 +8,25 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  ScrollView,
+  SafeAreaView,
+  ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
 import { SessionTimer } from '../components/SessionTimer';
 import { VideoEditor } from '../components/VideoEditor';
 import WebView from 'react-native-webview';
-import Constants from 'expo-constants';               // ← NEW
+import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 
-// YouTube Player States
+type VideoItem = {
+  id: { videoId: string };
+  snippet: {
+    title: string;
+    description: string;
+    thumbnails: { default: { url: string } };
+  };
+};
+
 const YT = {
   PlayerState: {
     UNSTARTED: -1,
@@ -31,90 +38,40 @@ const YT = {
   },
 };
 
-interface VideoItem {
-  id: { videoId: string };
-  snippet: {
-    title: string;
-    description: string;
-    thumbnails: { default: { url: string } };
-  };
-}
-
 export default function HomeScreen() {
-  /* ───────── state ───────── */
+  // State
   const [searchQuery, setSearchQuery] = useState('');
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [videoDuration, setVideoDuration] = useState(0);
   const [currentVideoTitle, setCurrentVideoTitle] = useState('');
   const webViewRef = useRef<WebView>(null);
+  const API_KEY = (Constants.expoConfig?.extra?.googleApiKey as string) || '';
 
-  /* ───────── helpers ───────── */
-  const API_KEY =
-    (Constants.expoConfig?.extra?.googleApiKey as string) || ''; // ← NEW
-
+  // Extract video ID from URL
   const extractVideoId = (url: string): string | null => {
-    const regExp =
-      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return match && match[2].length === 11 ? match[2] : null;
   };
 
-  const togglePlayPause = () => {
-    const script = isPlaying
-      ? 'window.player.pauseVideo();'
-      : 'window.player.playVideo();';
-    webViewRef.current?.injectJavaScript(script);
-  };
-
-  const handlePlayerStateChange = (state: number) => {
-    switch (state) {
-      case YT.PlayerState.PLAYING:
-        setIsPlaying(true);
-        webViewRef.current?.injectJavaScript(`
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'duration',
-            value: window.player.getDuration()
-          }));
-          true;
-        `);
-        break;
-      case YT.PlayerState.PAUSED:
-        setIsPlaying(false);
-        break;
-      case YT.PlayerState.ENDED:
-        webViewRef.current?.injectJavaScript(
-          'window.player.seekTo(0); window.player.playVideo();'
-        );
-        break;
-      default:
-        break;
-    }
-  };
-
+  // Handle video selection
   const handleVideoSelect = (video: VideoItem) => {
     setCurrentVideo(video.id.videoId);
     setCurrentVideoTitle(video.snippet.title);
   };
 
+  // Handle WebView messages
   const handleMessage = (event: any) => {
     try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'duration') {
-        setVideoDuration(data.value);
-      } else if (data.type === 'currentTime') {
-        /* you can handle current time here */
-      } else {
-        handlePlayerStateChange(parseInt(event.nativeEvent.data));
-      }
-    } catch {
-      handlePlayerStateChange(parseInt(event.nativeEvent.data));
+      const state = parseInt(event.nativeEvent.data);
+      // Handle player state changes if needed
+    } catch (error) {
+      console.error('Error handling message:', error);
     }
   };
 
-  /* ───────── search / fetch ───────── */
+  // Handle search
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
 
@@ -134,32 +91,26 @@ export default function HomeScreen() {
         )}&type=video&key=${API_KEY}`
       );
       const data = await response.json();
-      if (data.error) {
-        console.error('YouTube API Error:', data.error.message);
-        alert('YouTube API Error: ' + data.error.message);
-        return;
-      }
       setVideos(data.items || []);
-      setCurrentVideo(null);
     } catch (error) {
       console.error('Error searching YouTube:', error);
-      alert('Failed to search YouTube. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  /* UI render functions */
-  const renderVideoItem = ({ item }: { item: VideoItem }) => (
-    <TouchableOpacity onPress={() => handleVideoSelect(item)}>
-      <Image source={{ uri: item.snippet.thumbnails.default.url }} style={styles.thumbnail} />
-      <ThemedText style={styles.videoTitle}>{item.snippet.title}</ThemedText>
-    </TouchableOpacity>
-  );
-
-  const youtubeHTML = `
+  // YouTube HTML for WebView
+  const getYoutubeHTML = (videoId: string) => `
+    <!DOCTYPE html>
     <html>
-      <body style="margin:0">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <style>
+          body { margin: 0; padding: 0; overflow: hidden; }
+          #player { width: 100%; height: 100%; }
+        </style>
+      </head>
+      <body>
         <div id="player"></div>
         <script>
           var tag = document.createElement('script');
@@ -167,29 +118,51 @@ export default function HomeScreen() {
           var firstScriptTag = document.getElementsByTagName('script')[0];
           firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
+          var player;
           function onYouTubeIframeAPIReady() {
-            window.player = new YT.Player('player', {
+            player = new YT.Player('player', {
               height: '100%',
               width: '100%',
-              videoId: '${currentVideo}',
+              videoId: '${videoId}',
+              playerVars: {
+                playsinline: 1,
+                enablejsapi: 1,
+                origin: window.location.origin
+              },
               events: {
-                'onStateChange': function(e) {
-                  window.ReactNativeWebView.postMessage(e.data.toString());
-                }
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
               }
             });
+          }
+
+
+          function onPlayerReady(event) {
+            // Player is ready
+          }
+
+          function onPlayerStateChange(event) {
+            // Send player state to React Native
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'stateChange',
+              data: event.data
+            }));
           }
         </script>
       </body>
     </html>
   `;
 
-  // Styles for HomeScreen UI, moved above return
+  // Styles
   const styles = StyleSheet.create({
     container: { 
       flex: 1,
       backgroundColor: '#FFFFFF',
       paddingHorizontal: 16,
+    },
+    headerContainer: {
+      width: '100%',
+      paddingTop: 10,
     },
     contentContainer: {
       width: '100%',
@@ -197,108 +170,196 @@ export default function HomeScreen() {
       marginTop: 20,
       paddingBottom: 20,
     },
-    searchContainer: { 
-      flexDirection: 'row', 
+    searchContainer: {
+      flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#FFFFFF',
-      borderRadius: 8,
-      padding: 8,
-      width: '90%',
-      borderWidth: 1,
-      borderColor: '#000000',
+      backgroundColor: '#f0f0f0',
+      borderRadius: 25,
+      padding: 10,
+      width: '100%',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,
-      elevation: 2,
+      elevation: 3,
+      alignSelf: 'center',
+      maxWidth: 500,
     },
-    clearButton: {
-      padding: 4,
-      marginLeft: 4,
-    },
-    input: { 
-      flex: 1, 
-      height: 40, 
-      borderWidth: 0, 
-      borderRadius: 8, 
-      paddingHorizontal: 12, 
-      backgroundColor: 'transparent',
-      color: '#000000',
+    input: {
+      flex: 1,
+      height: 40,
+      padding: 8,
+      backgroundColor: '#fff',
+      borderRadius: 5,
+      marginLeft: 10,
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
       fontSize: 16,
+      color: '#000',
       includeFontPadding: false,
     },
-    thumbnail: { width: '100%', height: 200, marginBottom: 8 },
-    videoTitle: { marginBottom: 16 },
+    clearButton: {
+      padding: 8,
+    },
+    videoItem: {
+      flexDirection: 'row',
+      padding: 12,
+      marginBottom: 8,
+      backgroundColor: '#f8f8f8',
+      borderRadius: 8,
+      width: '100%',
+    },
+    videoList: {
+      width: '100%',
+      paddingHorizontal: 8,
+    },
+    thumbnail: {
+      width: 120,
+      height: 68,
+      borderRadius: 4,
+      marginRight: 12,
+    },
+    videoInfo: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    videoTitle: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: '#000',
+    },
+    videoDescription: {
+      fontSize: 12,
+      color: '#666',
+      marginTop: 4,
+    },
+    webview: {
+      width: '100%',
+      aspectRatio: 16/9,
+      marginBottom: 16,
+      backgroundColor: '#000',
+    },
     header: {
-      fontSize: 24,
+      fontSize: 22,
+      fontWeight: 'normal',
+      marginBottom: 16,
       textAlign: 'center',
-      color: '#000000',
-      marginTop: 24,
-      marginBottom: 32,
+      color: '#000',
+    },
+    videoContentContainer: {
+      marginTop: 0,
+      paddingTop: 10,
     },
   });
 
+  // Styles for the search container
+  const searchContainerStyle: ViewStyle = {
+    ...styles.searchContainer,
+    position: 'absolute',
+    top: '50%',
+    left: 16,
+    right: 16,
+    transform: [{ translateY: -25 }], // Half of the container height
+  };
+  
+
+  // Render video item for FlatList
+  const renderVideoItem = ({ item }: { item: VideoItem }) => (
+    <TouchableOpacity 
+      style={styles.videoItem}
+      onPress={() => handleVideoSelect(item)}
+    >
+      <Image 
+        source={{ uri: item.snippet.thumbnails.default.url }} 
+        style={styles.thumbnail} 
+      />
+      <View style={styles.videoInfo}>
+        <ThemedText style={styles.videoTitle} numberOfLines={2}>
+          {item.snippet.title}
+        </ThemedText>
+        <ThemedText style={styles.videoDescription} numberOfLines={2}>
+          {item.snippet.description}
+        </ThemedText>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <ThemedText style={styles.header}>Download and Loop Videos</ThemedText>
-      <View style={styles.contentContainer}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#000000" style={{ marginLeft: 8, marginRight: 8 }} />
-          <TextInput
-            style={styles.input}
-            placeholder="Search YouTube"
-            placeholderTextColor="#666666"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-            autoCorrect={false}
-            autoCapitalize="none"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                setSearchQuery('');
-                setVideos([]);
-                setCurrentVideo(null);
-              }}
-              style={styles.clearButton}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="close-circle" size={20} color="#666666" />
-            </TouchableOpacity>
-          )}
-        </View>
-        {loading && <ActivityIndicator />}
-      </View>
-      
-      {currentVideo && (
+      {!currentVideo && !loading && (
         <>
-          <WebView
-            key={currentVideo}
-            ref={webViewRef}
-            source={{ html: youtubeHTML }}
-            onMessage={handleMessage}
-            style={{ height: 200, width: Dimensions.get('window').width }}
-          />
-          <VideoEditor
-            videoId={currentVideo}
-            title={currentVideoTitle}
-            duration={videoDuration}
-            onSave={() => setCurrentVideo(null)}
-            webViewRef={webViewRef}
-          />
+          <View style={styles.headerContainer}>
+            <ThemedText style={styles.header}>
+              Download And Loop
+              <ThemedText style={styles.header}>
+                {'\n'}YouTube Videos
+              </ThemedText>
+            </ThemedText>
+          </View>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={searchContainerStyle}>
+              <Ionicons name="search" size={20} color="#666" />
+              <TextInput
+                style={styles.input}
+                placeholder="Search YouTube"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+                placeholderTextColor="#666"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity 
+                  onPress={() => setSearchQuery('')} 
+                  style={styles.clearButton}
+                >
+                  <Ionicons name="close-circle" size={20} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </>
       )}
+
+      {/* Content Area */}
+      <View style={[
+        styles.contentContainer,
+        currentVideo && styles.videoContentContainer
+      ]}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#0000ff" />
+        ) : currentVideo ? (
+          <>
+            <WebView
+              source={{ html: getYoutubeHTML(currentVideo) }}
+              style={styles.webview}
+              onMessage={handleMessage}
+              javaScriptEnabled
+              domStorageEnabled
+              allowsFullscreenVideo={false}
+              scrollEnabled={false}
+            />
+            <VideoEditor
+              videoId={currentVideo}
+              title={currentVideoTitle || 'Untitled Video'}
+              duration={0}
+              onSave={() => setCurrentVideo(null)}
+              webViewRef={webViewRef}
+            />
+          </>
+        ) : (
+          <>
+            <FlatList
+              data={videos}
+              keyExtractor={(item) => item.id.videoId}
+              renderItem={renderVideoItem}
+              contentContainerStyle={styles.videoList}
+            />
+          </>
+        )}
+      </View>
       
-      {!currentVideo && !loading && (
-        <FlatList
-          data={videos}
-          keyExtractor={item => item.id.videoId}
-          renderItem={renderVideoItem}
-        />
-      )}
-      
+      {/* Session Timer - Only show when no video is selected */}
       {!currentVideo && <SessionTimer variant="main" />}
     </SafeAreaView>
   );
