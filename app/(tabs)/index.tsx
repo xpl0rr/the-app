@@ -190,26 +190,31 @@ export default function HomeScreen() {
       flex: 1,
       backgroundColor: '#FFFFFF',
       paddingHorizontal: 16,
-      justifyContent: 'space-between',
     },
     contentContainer: {
-      position: 'absolute',
-      top: '50%',
-      left: 16,
-      right: 16,
-      transform: [{ translateY: -25 }], // Adjusts for the height of the search field
+      width: '100%',
+      alignItems: 'center',
+      marginTop: 20,
+      paddingBottom: 20,
     },
     searchContainer: { 
       flexDirection: 'row', 
       alignItems: 'center',
-      marginBottom: 20,
       backgroundColor: '#FFFFFF',
       borderRadius: 8,
       padding: 8,
       width: '90%',
-      alignSelf: 'center',
       borderWidth: 1,
       borderColor: '#000000',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    clearButton: {
+      padding: 4,
+      marginLeft: 4,
     },
     input: { 
       flex: 1, 
@@ -246,11 +251,19 @@ export default function HomeScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity
-              onPress={() => { setSearchQuery(''); setVideos([]); }}
-              style={{ marginLeft: 8, marginRight: 8 }}
+              onPress={() => {
+                setSearchQuery('');
+                setVideos([]);
+                setCurrentVideo(null);
+              }}
+              style={styles.clearButton}
+              activeOpacity={0.7}
             >
               <Ionicons name="close-circle" size={20} color="#666666" />
             </TouchableOpacity>

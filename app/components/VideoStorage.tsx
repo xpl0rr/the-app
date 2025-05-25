@@ -210,15 +210,17 @@ export function VideoStorage() {
               </ThemedText>
               <ThemedText style={styles.tapToPlay}>Tap to play</ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.renameButton} onPress={() => handleRenamePress(video)}>
-              <Ionicons name="pencil" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.deleteButton}
-              onPress={() => confirmDelete(video)}
-            >
-              <Ionicons name="trash-outline" size={24} color="#ff4444" />
-            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity onPress={() => handleRenamePress(video)} style={styles.renameButton}>
+                <Ionicons name="pencil" size={20} color="#666666" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => confirmDelete(video)}
+                style={styles.deleteButton}
+              >
+                <Ionicons name="trash-outline" size={20} color="#ff4444" />
+              </TouchableOpacity>
+            </View>
           </ThemedView>
         ))}
         {savedVideos.length === 0 && (
@@ -261,27 +263,36 @@ export function VideoStorage() {
       <Modal
         visible={renameModalVisible}
         transparent={true}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={handleCancelRename}
       >
-        <ThemedView style={styles.renameModalContainer}>
-          <ThemedText style={styles.renameModalTitle}>Rename Video</ThemedText>
-          <TextInput
-            style={styles.renameInput}
-            value={renameValue}
-            onChangeText={setRenameValue}
-            placeholder="New title"
-            placeholderTextColor="#999"
-          />
-          <View style={styles.renameButtons}>
-            <TouchableOpacity onPress={handleCancelRename}>
-              <ThemedText>Cancel</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSaveRename}>
-              <ThemedText>Save</ThemedText>
-            </TouchableOpacity>
+        <View style={styles.renameModalContainer}>
+          <View style={styles.renameModalContent}>
+            <ThemedText style={styles.renameModalTitle}>Rename Video</ThemedText>
+            <TextInput
+              style={styles.renameInput}
+              value={renameValue}
+              onChangeText={setRenameValue}
+              placeholder="Enter new title"
+              placeholderTextColor="#999999"
+              autoFocus={true}
+            />
+            <View style={styles.renameButtons}>
+              <TouchableOpacity 
+                onPress={handleCancelRename}
+                style={[styles.confirmRenameButton, {backgroundColor: '#F0F0F0', marginRight: 12}]}
+              >
+                <ThemedText style={{color: '#333333'}}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleSaveRename}
+                style={styles.confirmRenameButton}
+              >
+                <ThemedText style={styles.renameButtonText}>Save Changes</ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
-        </ThemedView>
+        </View>
       </Modal>
     </ThemedView>
   );
@@ -297,87 +308,109 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    backgroundColor: '#FFFFFF',
   },
   sectionTitle: {
     fontSize: 24,
     fontWeight: 'normal',
-    alignSelf: 'center',
     textAlign: 'center',
-    marginTop: 32,
-    marginBottom: 12,
-    color: '#fff',
+    marginTop: 24,
+    marginBottom: 24,
+    color: '#000000',
   },
   scrollView: {
     flex: 1,
+    paddingHorizontal: 8,
   },
   videoItem: {
     flexDirection: 'row',
-    backgroundColor: '#333',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   videoInfo: {
     flex: 1,
-    padding: 8,
+    paddingRight: 8,
   },
   videoTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: 4,
-    color: '#fff',
+    color: '#000000',
   },
   videoDetails: {
     fontSize: 14,
-    color: '#999',
+    color: '#666666',
     marginBottom: 4,
   },
   tapToPlay: {
     fontSize: 12,
-    color: '#00a86b',
-    fontStyle: 'italic',
+    color: '#4D82F3',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   deleteButton: {
     padding: 8,
+    marginLeft: 8,
   },
   renameButton: {
     padding: 8,
-    marginRight: 8,
+    marginLeft: 8,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#999',
+    color: '#999999',
     fontSize: 16,
-    marginTop: 20,
+    marginTop: 24,
+    paddingHorizontal: 24,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   modalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
     flex: 1,
+    paddingRight: 8,
   },
   closeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 8,
+  },
+  closeButtonText: {
+    color: '#666666',
+    fontSize: 14,
+    marginLeft: 4,
   },
   playerContainer: {
     height: 240,
-    marginHorizontal: 16,
-    marginBottom: 32,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
   },
   webView: {
     flex: 1,
@@ -386,28 +419,49 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 24,
+  },
+  renameModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
   },
   renameModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#fff',
+    fontWeight: '600',
+    marginBottom: 16,
+    color: '#000000',
   },
   renameInput: {
     width: '100%',
-    height: 40,
-    borderColor: '#ccc',
+    height: 48,
+    borderColor: '#E0E0E0',
     borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    color: '#fff',
-    marginBottom: 12,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+    color: '#000000',
+    backgroundColor: '#FFFFFF',
+    fontSize: 16,
+  },
+  confirmRenameButton: {
+    backgroundColor: '#4D82F3',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  renameButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
   },
   renameButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     width: '100%',
+    marginTop: 8,
   },
 }); 
