@@ -188,7 +188,8 @@ export default function HomeScreen() {
   const styles = StyleSheet.create({
     container: { 
       flex: 1,
-      padding: 16,
+      backgroundColor: '#FFFFFF',
+      paddingHorizontal: 16,
       justifyContent: 'space-between',
     },
     contentContainer: {
@@ -202,28 +203,33 @@ export default function HomeScreen() {
       flexDirection: 'row', 
       alignItems: 'center',
       marginBottom: 20,
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      backgroundColor: '#FFFFFF',
       borderRadius: 8,
       padding: 8,
+      width: '90%',
+      alignSelf: 'center',
+      borderWidth: 1,
+      borderColor: '#000000',
     },
     input: { 
       flex: 1, 
-      height: 50, 
+      height: 40, 
       borderWidth: 0, 
-      borderRadius: 4, 
+      borderRadius: 8, 
       paddingHorizontal: 12, 
-      color: '#fff',
+      backgroundColor: 'transparent',
+      color: '#000000',
       fontSize: 16,
+      includeFontPadding: false,
     },
     thumbnail: { width: '100%', height: 200, marginBottom: 8 },
     videoTitle: { marginBottom: 16 },
-    header: { 
-      fontSize: 24, 
-      fontWeight: 'bold', 
-      marginBottom: 24, 
-      alignSelf: 'center', 
+    header: {
+      fontSize: 24,
       textAlign: 'center',
-      color: '#fff',
+      color: '#000000',
+      marginTop: 24,
+      marginBottom: 32,
     },
   });
 
@@ -232,10 +238,11 @@ export default function HomeScreen() {
       <ThemedText style={styles.header}>Download and Loop Videos</ThemedText>
       <View style={styles.contentContainer}>
         <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#000000" style={{ marginLeft: 8, marginRight: 8 }} />
           <TextInput
             style={styles.input}
             placeholder="Search YouTube"
-            placeholderTextColor="#fff"
+            placeholderTextColor="#666666"
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}
@@ -243,14 +250,11 @@ export default function HomeScreen() {
           {searchQuery.length > 0 && (
             <TouchableOpacity
               onPress={() => { setSearchQuery(''); setVideos([]); }}
-              style={{ marginLeft: 8 }}
+              style={{ marginLeft: 8, marginRight: 8 }}
             >
-              <Ionicons name="close-circle" size={24} color="#fff" />
+              <Ionicons name="close-circle" size={20} color="#666666" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={handleSearch} style={{ marginLeft: 8 }}>
-            <Ionicons name="search" size={24} color="#fff" />
-          </TouchableOpacity>
         </View>
         {loading && <ActivityIndicator />}
       </View>
