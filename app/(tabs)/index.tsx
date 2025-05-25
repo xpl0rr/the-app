@@ -173,30 +173,21 @@ export default function HomeScreen() {
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#f0f0f0',
-      borderRadius: 25,
-      padding: 10,
       width: '100%',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
       alignSelf: 'center',
       maxWidth: 500,
+      backgroundColor: 'transparent',
     },
     input: {
       flex: 1,
       height: 40,
-      padding: 8,
-      backgroundColor: '#fff',
-      borderRadius: 5,
+      padding: 0,
       marginLeft: 10,
-      borderWidth: 1,
-      borderColor: '#e0e0e0',
       fontSize: 16,
       color: '#000',
       includeFontPadding: false,
+      borderWidth: 0,
+      backgroundColor: 'transparent',
     },
     clearButton: {
       padding: 8,
@@ -256,10 +247,24 @@ export default function HomeScreen() {
   const searchContainerStyle: ViewStyle = {
     ...styles.searchContainer,
     position: 'absolute',
-    top: '50%',
-    left: 16,
-    right: 16,
-    transform: [{ translateY: -25 }], // Half of the container height
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  };
+  
+  const searchFieldStyle: ViewStyle = {
+    ...styles.searchContainer,
+    width: '90%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: '#fff',
   };
   
 
@@ -296,8 +301,8 @@ export default function HomeScreen() {
               </ThemedText>
             </ThemedText>
           </View>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <View style={searchContainerStyle}>
+          <View style={searchContainerStyle}>
+            <View style={searchFieldStyle}>
               <Ionicons name="search" size={20} color="#666" />
               <TextInput
                 style={styles.input}
