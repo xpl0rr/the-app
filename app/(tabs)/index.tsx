@@ -186,39 +186,75 @@ export default function HomeScreen() {
 
   // Styles for HomeScreen UI, moved above return
   const styles = StyleSheet.create({
-    container: { flex: 1, padding: 16 },
-    searchContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    input: { flex: 1, height: 50, borderWidth: 1, borderColor: '#ccc', borderRadius: 4, paddingHorizontal: 8, color: '#fff' },
+    container: { 
+      flex: 1,
+      padding: 16,
+      justifyContent: 'space-between',
+    },
+    contentContainer: {
+      position: 'absolute',
+      top: '50%',
+      left: 16,
+      right: 16,
+      transform: [{ translateY: -25 }], // Adjusts for the height of the search field
+    },
+    searchContainer: { 
+      flexDirection: 'row', 
+      alignItems: 'center',
+      marginBottom: 20,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      borderRadius: 8,
+      padding: 8,
+    },
+    input: { 
+      flex: 1, 
+      height: 50, 
+      borderWidth: 0, 
+      borderRadius: 4, 
+      paddingHorizontal: 12, 
+      color: '#fff',
+      fontSize: 16,
+    },
     thumbnail: { width: '100%', height: 200, marginBottom: 8 },
     videoTitle: { marginBottom: 16 },
-    header: { fontSize: 24, fontWeight: 'normal', marginBottom: 12, alignSelf: 'center', textAlign: 'center' },
+    header: { 
+      fontSize: 24, 
+      fontWeight: 'bold', 
+      marginBottom: 24, 
+      alignSelf: 'center', 
+      textAlign: 'center',
+      color: '#fff',
+    },
   });
 
   return (
     <SafeAreaView style={styles.container}>
       <ThemedText style={styles.header}>Download and Loop Videos</ThemedText>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Search YouTube"
-          placeholderTextColor="#fff"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity
-            onPress={() => { setSearchQuery(''); setVideos([]); }}
-            style={{ marginLeft: 8 }}
-          >
-            <Ionicons name="close-circle" size={24} color="#fff" />
+      <View style={styles.contentContainer}>
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Search YouTube"
+            placeholderTextColor="#fff"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => { setSearchQuery(''); setVideos([]); }}
+              style={{ marginLeft: 8 }}
+            >
+              <Ionicons name="close-circle" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={handleSearch} style={{ marginLeft: 8 }}>
+            <Ionicons name="search" size={24} color="#fff" />
           </TouchableOpacity>
-        )}
-        <TouchableOpacity onPress={handleSearch} style={{ marginLeft: 8 }}>
-          <Ionicons name="search" size={24} color="#fff" />
-        </TouchableOpacity>
+        </View>
+        {loading && <ActivityIndicator />}
       </View>
-      {loading && <ActivityIndicator />}
+      
       {currentVideo && (
         <>
           <WebView
@@ -237,6 +273,7 @@ export default function HomeScreen() {
           />
         </>
       )}
+      
       {!currentVideo && !loading && (
         <FlatList
           data={videos}
@@ -244,6 +281,7 @@ export default function HomeScreen() {
           renderItem={renderVideoItem}
         />
       )}
+      
       {!currentVideo && <SessionTimer variant="main" />}
     </SafeAreaView>
   );

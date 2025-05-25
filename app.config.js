@@ -28,6 +28,11 @@ export default ({ config }) => ({
     bundleIdentifier: "com.xpl0rr.looper",
     runtimeVersion: "1.0.0",
     supportsTablet: true,
+    infoPlist: {
+      ...config.ios?.infoPlist,
+      ITSAppUsesNonExemptEncryption: false
+    },
+    buildNumber: "1.0.0"
   },
 
   /* ─────────────── Android settings ─────────── */
