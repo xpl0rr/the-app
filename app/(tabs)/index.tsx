@@ -160,9 +160,43 @@ export default function HomeScreen() {
       backgroundColor: '#FFFFFF',
       paddingHorizontal: 16,
     },
+    centeredContent: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
+    },
     headerContainer: {
       width: '100%',
-      paddingTop: 10,
+      alignItems: 'center',
+      marginTop: 20,
+      marginBottom: 20,
+    },
+    header: {
+      fontSize: 24,
+      textAlign: 'center',
+      lineHeight: 32,
+      color: '#000',
+      marginBottom: 10,
+      fontWeight: 'normal',
+    },
+    mainContent: {
+      flex: 1,
+      width: '100%',
+      position: 'relative',
+    },
+    centeredSearchContainer: {
+      position: 'absolute',
+      top: '30%',
+      left: 0,
+      right: 0,
+      zIndex: 10,
+      paddingHorizontal: 16,
+    },
+    searchWrapper: {
+      width: '100%',
+      alignItems: 'center',
+      marginBottom: 20,
     },
     contentContainer: {
       width: '100%',
@@ -173,10 +207,21 @@ export default function HomeScreen() {
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      width: '100%',
-      alignSelf: 'center',
+      width: '90%',
       maxWidth: 500,
-      backgroundColor: 'transparent',
+      backgroundColor: '#f0f0f0',
+      borderRadius: 25,
+      paddingHorizontal: 15,
+      height: 50,
+      marginLeft: 'auto',
+      marginRight: 'auto',
+      borderWidth: 1,
+      borderColor: '#000',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
     },
     input: {
       flex: 1,
@@ -229,13 +274,6 @@ export default function HomeScreen() {
       aspectRatio: 16/9,
       marginBottom: 16,
       backgroundColor: '#000',
-    },
-    header: {
-      fontSize: 22,
-      fontWeight: 'normal',
-      marginBottom: 16,
-      textAlign: 'center',
-      color: '#000',
     },
     videoContentContainer: {
       marginTop: 0,
@@ -291,59 +329,74 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#666" />
-        <TextInput
-          style={styles.input}
-          placeholder="Search YouTube"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-          returnKeyType="search"
-          placeholderTextColor="#666"
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity 
-            onPress={() => setSearchQuery('')} 
-            style={styles.clearButton}
-          >
-            <Ionicons name="close-circle" size={20} color="#666" />
-          </TouchableOpacity>
-        )}
+      {/* Header with Title */}
+      <View style={styles.headerContainer}>
+        <ThemedText style={styles.header}>
+          Download And Loop
+          <ThemedText style={styles.header}>
+            {'\n'}YouTube Videos
+          </ThemedText>
+        </ThemedText>
       </View>
+      
+      {/* Main Content */}
+      <View style={styles.mainContent}>
+        {/* Search Bar - Centered */}
+        <View style={styles.centeredSearchContainer}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#666" />
+            <TextInput
+              style={styles.input}
+              placeholder="Search YouTube"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+              placeholderTextColor="#666"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity 
+                onPress={() => setSearchQuery('')} 
+                style={styles.clearButton}
+              >
+                <Ionicons name="close-circle" size={20} color="#666" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
-      {/* Content Area */}
-      <View style={styles.contentContainer}>
-        {loading ? (
-          <ActivityIndicator size="large" color="#0000ff" />
-        ) : currentVideo ? (
-          <>
-            <WebView
-              source={{ html: getYoutubeHTML(currentVideo) }}
-              style={styles.webview}
-              onMessage={handleMessage}
-              javaScriptEnabled
-              domStorageEnabled
-              allowsFullscreenVideo={false}
-              scrollEnabled={false}
+        {/* Content Area */}
+        <View style={styles.contentContainer}>
+          {loading ? (
+            <ActivityIndicator size="large" color="#0000ff" />
+          ) : currentVideo ? (
+            <>
+              <WebView
+                source={{ html: getYoutubeHTML(currentVideo) }}
+                style={styles.webview}
+                onMessage={handleMessage}
+                javaScriptEnabled
+                domStorageEnabled
+                allowsFullscreenVideo={false}
+                scrollEnabled={false}
+              />
+              <VideoEditor
+                videoId={currentVideo}
+                title={currentVideoTitle || 'Untitled Video'}
+                duration={0}
+                onSave={() => setCurrentVideo(null)}
+                webViewRef={webViewRef}
+              />
+            </>
+          ) : (
+            <FlatList
+              data={videos}
+              keyExtractor={(item) => item.id.videoId}
+              renderItem={renderVideoItem}
+              style={styles.videoList}
             />
-            <VideoEditor
-              videoId={currentVideo}
-              title={currentVideoTitle || 'Untitled Video'}
-              duration={0}
-              onSave={() => setCurrentVideo(null)}
-              webViewRef={webViewRef}
-            />
-          </>
-        ) : (
-          <FlatList
-            data={videos}
-            keyExtractor={(item) => item.id.videoId}
-            renderItem={renderVideoItem}
-            style={styles.videoList}
-          />
-        )}
+          )}
+        </View>
       </View>
       
       {/* Session Timer - Only show when no video is selected */}
