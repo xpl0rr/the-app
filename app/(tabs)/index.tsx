@@ -10,6 +10,8 @@ import {
   Dimensions,
   SafeAreaView,
   ViewStyle,
+  Linking,
+  Alert,
 } from 'react-native';
 import { ThemedText } from '../components/ThemedText';
 import { SessionTimer } from '../components/SessionTimer';
@@ -73,6 +75,16 @@ export default function HomeScreen() {
         // Update current time for the editor
         const duration = message.value || 0;
         console.log('Current time update:', duration);
+      } else if (message.type === 'openInYouTube') {
+        // Open the video in YouTube app or website
+        const youtubeUrl = `https://www.youtube.com/watch?v=${message.videoId}`;
+        Linking.openURL(youtubeUrl).catch((err: Error) => {
+          console.error('Error opening YouTube link:', err);
+          Alert.alert('Error', 'Could not open YouTube link');
+        });
+      } else if (message.type === 'error') {
+        // Handle player errors
+        console.log('Player error:', message.data);
       }
     } catch (error) {
       console.error('Error handling message:', error);
@@ -107,7 +119,7 @@ export default function HomeScreen() {
     }
   };
 
-  // YouTube HTML for WebView
+  // YouTube HTML for WebView - Enhanced with direct API access
   const getYoutubeHTML = (videoId: string) => `
     <!DOCTYPE html>
     <html>
@@ -115,18 +127,54 @@ export default function HomeScreen() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
           body { margin: 0; padding: 0; overflow: hidden; background-color: black; }
-          #player { width: 100%; height: 100%; }
+          #player { width: 100%; height: 100%; position: relative; }
+          /* Play button overlay to ensure playing works */
+          #playButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px; /* Larger button */
+            height: 100px; /* Larger button */
+            background-color: rgba(0,0,0,0.7);
+            border-radius: 50%;
+            z-index: 999; /* Very high z-index to ensure it's on top */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            border: 2px solid white;
+          }
+          #playButton.hidden { display: none; }
         </style>
       </head>
       <body>
-        <div id="player"></div>
+        <div id="playerContainer" style="position: relative; width: 100%; height: 100%;">
+          <div id="player"></div>
+          <div id="playButton">▶</div>
+        </div>
         <script>
+          // Direct YouTube API implementation
           var tag = document.createElement('script');
           tag.src = "https://www.youtube.com/iframe_api";
           var firstScriptTag = document.getElementsByTagName('script')[0];
           firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
           var player;
+          var playerReady = false;
+          var playerLoaded = false;
+          var currentTime = 0;
+          
+          // Manual controls - needed because of YouTube restrictions
+          document.getElementById('playButton').addEventListener('click', function() {
+            if (player && playerReady) {
+              player.playVideo();
+              this.classList.add('hidden');
+            }
+          });
+
           function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
               height: '100%',
@@ -135,37 +183,67 @@ export default function HomeScreen() {
               playerVars: {
                 playsinline: 1,
                 enablejsapi: 1,
+                autoplay: 0,
                 origin: window.location.origin,
-                controls: 0,
-                showinfo: 0,
+                controls: 1,
+                modestbranding: 1,
                 rel: 0
               },
               events: {
                 'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange
+                'onStateChange': onPlayerStateChange,
+                'onError': onPlayerError
               }
             });
           }
 
           function onPlayerReady(event) {
-            // Expose player to window for external control
+            // Make player globally available
             window.player = player;
+            playerReady = true;
             
-            // Send ready event
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'playerReady',
-              duration: player.getDuration()
-            }));
+            // Send duration to React Native
+            try {
+              var duration = player.getDuration() || 300;
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'playerReady',
+                duration: duration
+              }));
+              playerLoaded = true;
+            } catch(e) {
+              console.log('Error getting duration:', e);
+            }
             
-            // Start periodic time updates
-            setInterval(function() {
-              if (player && player.getCurrentTime) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'currentTime',
-                  value: player.getCurrentTime()
-                }));
+            // Make the custom play button more visible
+            document.getElementById('playButton').style.opacity = 1;
+            
+            // Setup direct command access for the player
+            window.playVideo = function() {
+              if (player && playerReady) {
+                player.playVideo();
+                document.getElementById('playButton').classList.add('hidden');
+                return true;
               }
-            }, 500);
+              return false;
+            };
+            
+            window.pauseVideo = function() {
+              if (player && playerReady) {
+                player.pauseVideo();
+                document.getElementById('playButton').classList.remove('hidden');
+                return true;
+              }
+              return false;
+            };
+            
+            window.seekTo = function(seconds) {
+              if (player && playerReady) {
+                player.seekTo(seconds, true);
+                currentTime = seconds;
+                return true;
+              }
+              return false;
+            };
           }
 
           function onPlayerStateChange(event) {
@@ -174,7 +252,57 @@ export default function HomeScreen() {
               type: 'stateChange',
               data: event.data
             }));
+            
+            // Also send current time on state change
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'currentTime',
+              value: player.getCurrentTime()
+            }));
           }
+          
+          function onPlayerError(event) {
+            // Handle player errors
+            console.log('Player error:', event.data);
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'error',
+              code: event.data
+            }));
+          }
+          
+          // Send periodic time updates
+          setInterval(function() {
+            if (player && player.getCurrentTime) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'currentTime',
+                value: player.getCurrentTime()
+              }));
+            }
+          }, 500);
+          }
+
+          function onPlayerStateChange(event) {
+            // Send player state changes to React Native
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'stateChange',
+              data: event.data
+            }));
+            
+            // Also send current time on state change
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'currentTime',
+              value: player.getCurrentTime()
+            }));
+          }
+          
+          // Send periodic time updates
+          setInterval(function() {
+            if (player && player.getCurrentTime) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'currentTime',
+                value: player.getCurrentTime()
+              }));
+            }
+          }, 500);
         </script>
       </body>
     </html>
@@ -458,16 +586,18 @@ export default function HomeScreen() {
       ) : (
         // VIDEO VIEW - Show when a video is selected
         <View style={styles.videoContentContainer}>
-          <View style={styles.safeArea}>
-            {/* Video at top */}
-            <View style={styles.videoWrapper}>
+          <SafeAreaView style={{ flex: 1, width: '100%' }}>
+            {/* Video Player Section - Add top padding to ensure visibility */}
+            <View style={[styles.videoWrapper, { paddingTop: 24 }]}>
               <WebView
+                ref={webViewRef}
                 source={{ html: getYoutubeHTML(currentVideo) }}
-                style={styles.webview}
+                style={[styles.webview, { height: 200 }]}
                 onMessage={handleMessage}
-                javaScriptEnabled
-                domStorageEnabled
-                allowsFullscreenVideo={false}
+                javaScriptEnabled={true}
+                allowsInlineMediaPlayback={true}
+                mediaPlaybackRequiresUserAction={false}
+                domStorageEnabled={true}
                 scrollEnabled={false}
               />
             </View>
@@ -482,7 +612,7 @@ export default function HomeScreen() {
                 webViewRef={webViewRef}
               />
             </View>
-          </View>
+          </SafeAreaView>
         </View>
       )}
     </SafeAreaView>

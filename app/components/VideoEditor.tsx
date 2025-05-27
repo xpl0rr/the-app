@@ -14,7 +14,7 @@ interface VideoEditorProps {
   webViewRef: any;
 }
 
-export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: VideoEditorProps) {
+export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: VideoEditorProps): React.ReactElement {
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(duration);
   const [currentTime, setCurrentTime] = useState(0);
@@ -85,11 +85,28 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
   };
 
   const seekTo = (time: number) => {
-    webViewRef.current?.injectJavaScript(`
-      window.player.seekTo(${time});
-      true;
-    `);
-    setCurrentTime(time);
+    try {
+      if (webViewRef && webViewRef.current) {
+        console.log('Seeking to:', time);
+        webViewRef.current.injectJavaScript(`
+          if (window.executeCommand) {
+            window.executeCommand('seekTo', ${time});
+            console.log('Seek command executed via direct command');
+          } else if (window.player && window.player.seekTo) {
+            window.player.seekTo(${time});
+            console.log('Seek command sent to player directly');
+          } else {
+            console.log('Player not ready for seeking');
+          }
+          true;
+        `);
+        setCurrentTime(time);
+      } else {
+        console.log('WebView ref not available');
+      }
+    } catch (error) {
+      console.error('Error in seekTo:', error);
+    }
   };
 
   const playClip = () => {
@@ -99,24 +116,62 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
       return;
     }
     
-    // Toggle between playing and pausing
-    if (isPreviewingClip) {
-      // If already previewing, pause the clip
-      webViewRef.current?.injectJavaScript(`
-        window.player.pauseVideo();
-        true;
-      `);
+    try {
+      // Toggle between play and pause
+      if (isPlaying) {
+        // If already playing, pause the video
+        setIsPlaying(false);
+        setIsPreviewingClip(false);
+        
+        webViewRef.current?.injectJavaScript(`
+          if (window.pauseVideo) {
+            window.pauseVideo();
+          } else if (player) {
+            player.pauseVideo();
+          }
+          true;
+        `);
+      } else {
+        // If paused, start playing from the selected start time
+        setIsPlaying(true);
+        setIsPreviewingClip(true);
+        
+        webViewRef.current?.injectJavaScript(`
+          // First seek to the start time
+          if (window.seekTo) {
+            window.seekTo(${startTime});
+          } else if (player) {
+            player.seekTo(${startTime}, true);
+          }
+          
+          // Then play the video
+          if (window.playVideo) {
+            window.playVideo();
+          } else if (player) {
+            player.playVideo();
+          }
+          
+          // We'll set up a timer to pause at the end time
+          clearTimeout(window.clipEndTimer);
+          window.clipEndTimer = setTimeout(() => {
+            if (window.pauseVideo) {
+              window.pauseVideo();
+            } else if (player) {
+              player.pauseVideo();
+            }
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'clipEnded'
+            }));
+          }, (${endTime - startTime}) * 1000);
+          
+          true;
+        `);
+      }
+    } catch (error) {
+      console.error('Error in playClip:', error);
+      // Revert UI state if there was an error
       setIsPreviewingClip(false);
       setIsPlaying(false);
-    } else {
-      // Start preview from the clip start time
-      seekTo(startTime);
-      setIsPreviewingClip(true);
-      webViewRef.current?.injectJavaScript(`
-        window.player.playVideo();
-        true;
-      `);
-      setIsPlaying(true);
     }
   };
 
@@ -233,8 +288,8 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
           style={[styles.controlButton, isPreviewingClip && styles.activeButton]}
           onPress={playClip}
         >
-          <Ionicons name="play" size={22} color="#fff" />
-          <ThemedText style={styles.buttonLabel}>Preview</ThemedText>
+          <Ionicons name={isPreviewingClip ? "pause" : "play"} size={22} color="#fff" />
+          <ThemedText style={styles.buttonLabel}>{isPreviewingClip ? "Pause" : "Preview"}</ThemedText>
         </TouchableOpacity>
 
         <TouchableOpacity 
