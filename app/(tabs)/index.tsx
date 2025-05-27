@@ -186,12 +186,22 @@ export default function HomeScreen() {
       position: 'relative',
     },
     centeredSearchContainer: {
+      width: '100%',
       position: 'absolute',
-      top: '30%',
+      top: '50%',
       left: 0,
       right: 0,
-      zIndex: 10,
+      transform: [{ translateY: -25 }], // Half of the search bar height
+      zIndex: 1,
       paddingHorizontal: 16,
+      display: 'flex',
+    },
+    topSearchContainer: {
+      width: '100%',
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 10,
+      marginBottom: 5,
     },
     searchWrapper: {
       width: '100%',
@@ -201,8 +211,19 @@ export default function HomeScreen() {
     contentContainer: {
       width: '100%',
       alignItems: 'center',
+      flex: 1,
       marginTop: 20,
       paddingBottom: 20,
+    },
+    videoContentContainer: {
+      width: '100%',
+      alignItems: 'center',
+      flex: 1,
+      justifyContent: 'flex-start',
+      marginTop: 0,
+      paddingTop: 10,
+      position: 'relative',
+      zIndex: 20, // Higher z-index to ensure it's on top
     },
     searchContainer: {
       flexDirection: 'row',
@@ -275,10 +296,6 @@ export default function HomeScreen() {
       marginBottom: 16,
       backgroundColor: '#000',
     },
-    videoContentContainer: {
-      marginTop: 0,
-      paddingTop: 10,
-    },
   });
 
   // Styles for the search container
@@ -329,78 +346,86 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Title */}
-      <View style={styles.headerContainer}>
-        <ThemedText style={styles.header}>
-          Download And Loop
-          <ThemedText style={styles.header}>
-            {'\n'}YouTube Videos
-          </ThemedText>
-        </ThemedText>
-      </View>
-      
-      {/* Main Content */}
-      <View style={styles.mainContent}>
-        {/* Search Bar - Centered */}
-        <View style={styles.centeredSearchContainer}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#666" />
-            <TextInput
-              style={styles.input}
-              placeholder="Search YouTube"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-              placeholderTextColor="#666"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity 
-                onPress={() => setSearchQuery('')} 
-                style={styles.clearButton}
-              >
-                <Ionicons name="close-circle" size={20} color="#666" />
-              </TouchableOpacity>
+      {!currentVideo ? (
+        // SEARCH VIEW - Show when no video is selected
+        <>
+          {/* Header with Title - Only show when not searching */}
+          {videos.length === 0 && (
+            <View style={styles.headerContainer}>
+              <ThemedText style={styles.header}>
+                Download And Loop
+                <ThemedText style={styles.header}>
+                  {'\n'}YouTube Videos
+                </ThemedText>
+              </ThemedText>
+            </View>
+          )}
+          
+          {/* Search Bar - Top position when searching, centered otherwise */}
+          <View style={videos.length > 0 ? styles.topSearchContainer : styles.centeredSearchContainer}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#666" />
+              <TextInput
+                style={styles.input}
+                placeholder="Search YouTube"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+                placeholderTextColor="#666"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity 
+                  onPress={() => {
+                    setSearchQuery('');
+                    setVideos([]);
+                  }} 
+                  style={styles.clearButton}
+                >
+                  <Ionicons name="close-circle" size={20} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Content Area for Search Results */}
+          <View style={styles.contentContainer}>
+            {loading ? (
+              <ActivityIndicator size="large" color="#0000ff" />
+            ) : (
+              <FlatList
+                data={videos}
+                keyExtractor={(item) => item.id.videoId}
+                renderItem={renderVideoItem}
+                style={styles.videoList}
+              />
             )}
           </View>
+          
+          {/* Session Timer */}
+          <SessionTimer variant="main" />
+        </>
+      ) : (
+        // VIDEO VIEW - Show when a video is selected
+        <View style={styles.videoContentContainer}>
+          <WebView
+            source={{ html: getYoutubeHTML(currentVideo) }}
+            style={styles.webview}
+            onMessage={handleMessage}
+            javaScriptEnabled
+            domStorageEnabled
+            allowsFullscreenVideo={false}
+            scrollEnabled={false}
+          />
+          <VideoEditor
+            videoId={currentVideo}
+            title={currentVideoTitle || 'Untitled Video'}
+            duration={0}
+            onSave={() => setCurrentVideo(null)}
+            webViewRef={webViewRef}
+          />
         </View>
-
-        {/* Content Area */}
-        <View style={styles.contentContainer}>
-          {loading ? (
-            <ActivityIndicator size="large" color="#0000ff" />
-          ) : currentVideo ? (
-            <>
-              <WebView
-                source={{ html: getYoutubeHTML(currentVideo) }}
-                style={styles.webview}
-                onMessage={handleMessage}
-                javaScriptEnabled
-                domStorageEnabled
-                allowsFullscreenVideo={false}
-                scrollEnabled={false}
-              />
-              <VideoEditor
-                videoId={currentVideo}
-                title={currentVideoTitle || 'Untitled Video'}
-                duration={0}
-                onSave={() => setCurrentVideo(null)}
-                webViewRef={webViewRef}
-              />
-            </>
-          ) : (
-            <FlatList
-              data={videos}
-              keyExtractor={(item) => item.id.videoId}
-              renderItem={renderVideoItem}
-              style={styles.videoList}
-            />
-          )}
-        </View>
-      </View>
-      
-      {/* Session Timer - Only show when no video is selected */}
-      {!currentVideo && <SessionTimer variant="main" />}
+      )}
     </SafeAreaView>
   );
 }

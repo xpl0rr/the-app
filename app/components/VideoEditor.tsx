@@ -28,7 +28,7 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
 
   // Setup interval to check current time during playback
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     
     if (isPreviewingClip) {
       interval = setInterval(() => {
@@ -127,12 +127,20 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Edit Video</ThemedText>
+      <ThemedView style={styles.headerRow}>
+        <ThemedText style={styles.title}>Edit Clip</ThemedText>
+        <TouchableOpacity 
+          style={styles.closeButton}
+          onPress={onSave} // Using onSave as close function
+        >
+          <Ionicons name="close" size={24} color="#fff" />
+        </TouchableOpacity>
+      </ThemedView>
       
-      <ThemedView style={styles.sliderContainer}>
-        <ThemedText style={styles.label}>Start Time: {formatTime(startTime)}</ThemedText>
+      <ThemedView style={styles.compactSliderRow}>
+        <ThemedText style={styles.timeLabel}>Start: {formatTime(startTime)}</ThemedText>
         <Slider
-          style={styles.slider}
+          style={styles.compactSlider}
           minimumValue={0}
           maximumValue={duration}
           value={startTime}
@@ -142,12 +150,9 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
           thumbTintColor="#00a86b"
           step={1}
         />
-      </ThemedView>
-
-      <ThemedView style={styles.sliderContainer}>
-        <ThemedText style={styles.label}>End Time: {formatTime(endTime)}</ThemedText>
+        <ThemedText style={styles.timeLabel}>End: {formatTime(endTime)}</ThemedText>
         <Slider
-          style={styles.slider}
+          style={styles.compactSlider}
           minimumValue={0}
           maximumValue={duration}
           value={endTime}
@@ -160,32 +165,24 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
       </ThemedView>
 
       <ThemedText style={styles.clipDuration}>
-        Clip Duration: {formatTime(endTime - startTime)}
+        Duration: {formatTime(endTime - startTime)}
       </ThemedText>
 
-      <ThemedView style={styles.controls}>
+      <ThemedView style={styles.compactControls}>
         <TouchableOpacity 
-          style={[styles.button, isPreviewingClip && styles.activeButton]}
+          style={[styles.compactButton, isPreviewingClip && styles.activeButton]}
           onPress={playClip}
         >
-          <Ionicons name="play" size={24} color="#fff" />
-          <ThemedText style={styles.buttonText}>Play Clip</ThemedText>
+          <Ionicons name="play" size={20} color="#fff" />
+          <ThemedText style={styles.compactButtonText}>Preview</ThemedText>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button}
+          style={styles.compactButton}
           onPress={() => saveVideo(true)}
         >
-          <Ionicons name="cut" size={24} color="#fff" />
-          <ThemedText style={styles.buttonText}>Save Clip</ThemedText>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.button}
-          onPress={() => saveVideo(false)}
-        >
-          <Ionicons name="save" size={24} color="#fff" />
-          <ThemedText style={styles.buttonText}>Save Full</ThemedText>
+          <Ionicons name="save" size={20} color="#fff" />
+          <ThemedText style={styles.compactButtonText}>Save Clip</ThemedText>
         </TouchableOpacity>
       </ThemedView>
     </ThemedView>
@@ -199,53 +196,97 @@ const formatTime = (seconds: number) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
+  container: { 
+    padding: 12,
     backgroundColor: '#333',
-    borderRadius: 12,
-    margin: 16,
+    borderRadius: 8,
+    margin: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#fff',
+    color: '#fff'
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  compactSliderRow: {
+    marginVertical: 5,
+  },
+  timeLabel: {
+    color: '#fff',
+    fontSize: 14,
+    marginVertical: 2,
+  },
+  compactSlider: {
+    width: '100%',
+    height: 30,
+    marginBottom: 5,
+  },
+  clipDuration: {
+    textAlign: 'center',
+    marginVertical: 5,
+    fontSize: 16,
+    color: '#00a86b',
+    fontWeight: 'bold',
+  },
+  compactControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 5,
+  },
+  compactButton: {
+    backgroundColor: '#222',
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    marginHorizontal: 4,
+    flexDirection: 'row',
+  },
+  activeButton: {
+    backgroundColor: '#00a86b',
+  },
+  compactButtonText: {
+    color: '#fff',
+    marginLeft: 5,
+    fontSize: 14,
+  },
+  // Keep original styles for backward compatibility
   sliderContainer: {
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    color: '#fff',
     marginBottom: 8,
+    color: '#fff'
   },
   slider: {
     width: '100%',
     height: 40,
   },
-  clipDuration: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#00a86b',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
   controls: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 16,
+    marginTop: 8,
   },
   button: {
-    alignItems: 'center',
-    padding: 8,
+    backgroundColor: '#222',
+    padding: 12,
     borderRadius: 8,
-  },
-  activeButton: {
-    backgroundColor: '#00a86b33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    marginHorizontal: 4,
   },
   buttonText: {
     color: '#fff',
     marginTop: 4,
-    fontSize: 12,
   },
 }); 
