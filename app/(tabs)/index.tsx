@@ -291,46 +291,30 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {!currentVideo && !loading && (
-        <>
-          <View style={styles.headerContainer}>
-            <ThemedText style={styles.header}>
-              Download And Loop
-              <ThemedText style={styles.header}>
-                {'\n'}YouTube Videos
-              </ThemedText>
-            </ThemedText>
-          </View>
-          <View style={searchContainerStyle}>
-            <View style={searchFieldStyle}>
-              <Ionicons name="search" size={20} color="#666" />
-              <TextInput
-                style={styles.input}
-                placeholder="Search YouTube"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearch}
-                returnKeyType="search"
-                placeholderTextColor="#666"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity 
-                  onPress={() => setSearchQuery('')} 
-                  style={styles.clearButton}
-                >
-                  <Ionicons name="close-circle" size={20} color="#666" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </>
-      )}
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#666" />
+        <TextInput
+          style={styles.input}
+          placeholder="Search YouTube"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearch}
+          returnKeyType="search"
+          placeholderTextColor="#666"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity 
+            onPress={() => setSearchQuery('')} 
+            style={styles.clearButton}
+          >
+            <Ionicons name="close-circle" size={20} color="#666" />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Content Area */}
-      <View style={[
-        styles.contentContainer,
-        currentVideo && styles.videoContentContainer
-      ]}>
+      <View style={styles.contentContainer}>
         {loading ? (
           <ActivityIndicator size="large" color="#0000ff" />
         ) : currentVideo ? (
@@ -353,14 +337,12 @@ export default function HomeScreen() {
             />
           </>
         ) : (
-          <>
-            <FlatList
-              data={videos}
-              keyExtractor={(item) => item.id.videoId}
-              renderItem={renderVideoItem}
-              contentContainerStyle={styles.videoList}
-            />
-          </>
+          <FlatList
+            data={videos}
+            keyExtractor={(item) => item.id.videoId}
+            renderItem={renderVideoItem}
+            style={styles.videoList}
+          />
         )}
       </View>
       
