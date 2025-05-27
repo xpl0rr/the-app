@@ -119,6 +119,19 @@ export default function HomeScreen() {
     }
   };
 
+  // Add a direct HTML iframe approach for more reliable YouTube embedding
+  const getYouTubeIframeHTML = (videoId: string) => `
+    <iframe 
+      id="ytplayer" 
+      width="100%" 
+      height="100%" 
+      src="https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=1&modestbranding=1" 
+      frameborder="0" 
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+      allowfullscreen
+    ></iframe>
+  `;
+
   // YouTube HTML for WebView - Enhanced with direct API access
   const getYoutubeHTML = (videoId: string) => `
     <!DOCTYPE html>
