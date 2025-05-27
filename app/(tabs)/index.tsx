@@ -217,13 +217,13 @@ export default function HomeScreen() {
     },
     videoContentContainer: {
       width: '100%',
+      height: '100%',
       alignItems: 'center',
-      flex: 1,
       justifyContent: 'flex-start',
-      marginTop: 0,
-      paddingTop: 10,
+      paddingTop: 0,
+      paddingBottom: 0,
+      backgroundColor: '#000',
       position: 'relative',
-      zIndex: 20, // Higher z-index to ensure it's on top
     },
     searchContainer: {
       flexDirection: 'row',
@@ -292,9 +292,30 @@ export default function HomeScreen() {
     },
     webview: {
       width: '100%',
-      aspectRatio: 16/9,
-      marginBottom: 16,
+      height: 160, // Minimal height to fit at top
       backgroundColor: '#000',
+    },
+    videoWrapper: {
+      width: '100%',
+      height: 160, // Match webview height
+      marginTop: 0,
+      marginBottom: 0,
+      backgroundColor: '#000',
+      alignSelf: 'flex-start', // Pin to top
+    },
+    safeArea: {
+      width: '100%',
+      height: '100%',
+      flexDirection: 'column',
+      justifyContent: 'flex-start', // Align to top
+      alignItems: 'center',
+    },
+    editorWrapper: {
+      width: '100%',
+      height: 250, // Even larger area for editor
+      backgroundColor: '#111',
+      marginTop: 0,
+      alignSelf: 'flex-start',
     },
   });
 
@@ -408,22 +429,31 @@ export default function HomeScreen() {
       ) : (
         // VIDEO VIEW - Show when a video is selected
         <View style={styles.videoContentContainer}>
-          <WebView
-            source={{ html: getYoutubeHTML(currentVideo) }}
-            style={styles.webview}
-            onMessage={handleMessage}
-            javaScriptEnabled
-            domStorageEnabled
-            allowsFullscreenVideo={false}
-            scrollEnabled={false}
-          />
-          <VideoEditor
-            videoId={currentVideo}
-            title={currentVideoTitle || 'Untitled Video'}
-            duration={0}
-            onSave={() => setCurrentVideo(null)}
-            webViewRef={webViewRef}
-          />
+          <View style={styles.safeArea}>
+            {/* Video at top */}
+            <View style={styles.videoWrapper}>
+              <WebView
+                source={{ html: getYoutubeHTML(currentVideo) }}
+                style={styles.webview}
+                onMessage={handleMessage}
+                javaScriptEnabled
+                domStorageEnabled
+                allowsFullscreenVideo={false}
+                scrollEnabled={false}
+              />
+            </View>
+            
+            {/* Editor below video */}
+            <View style={styles.editorWrapper}>
+              <VideoEditor
+                videoId={currentVideo}
+                title={currentVideoTitle || 'Untitled Video'}
+                duration={0}
+                onSave={() => setCurrentVideo(null)}
+                webViewRef={webViewRef}
+              />
+            </View>
+          </View>
         </View>
       )}
     </SafeAreaView>

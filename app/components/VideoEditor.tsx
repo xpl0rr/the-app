@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, TouchableOpacity, Alert, View } from 'react-native';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { Ionicons } from '@expo/vector-icons';
@@ -126,65 +126,80 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedView style={styles.headerRow}>
-        <ThemedText style={styles.title}>Edit Clip</ThemedText>
+    <ThemedView style={styles.expandedContainer}>
+      {/* Title area */}
+      <View style={styles.titleRow}>
+        <ThemedText style={styles.videoTitle}>{title}</ThemedText>
         <TouchableOpacity 
-          style={styles.closeButton}
-          onPress={onSave} // Using onSave as close function
+          style={styles.titleCloseButton}
+          onPress={onSave}
         >
-          <Ionicons name="close" size={24} color="#fff" />
+          <Ionicons name="close" size={18} color="#fff" />
         </TouchableOpacity>
-      </ThemedView>
-      
-      <ThemedView style={styles.compactSliderRow}>
-        <ThemedText style={styles.timeLabel}>Start: {formatTime(startTime)}</ThemedText>
-        <Slider
-          style={styles.compactSlider}
-          minimumValue={0}
-          maximumValue={duration}
-          value={startTime}
-          onValueChange={handleSliderStartChange}
-          minimumTrackTintColor="#00a86b"
-          maximumTrackTintColor="#666"
-          thumbTintColor="#00a86b"
-          step={1}
-        />
-        <ThemedText style={styles.timeLabel}>End: {formatTime(endTime)}</ThemedText>
-        <Slider
-          style={styles.compactSlider}
-          minimumValue={0}
-          maximumValue={duration}
-          value={endTime}
-          onValueChange={handleSliderEndChange}
-          minimumTrackTintColor="#00a86b"
-          maximumTrackTintColor="#666"
-          thumbTintColor="#00a86b"
-          step={1}
-        />
-      </ThemedView>
+      </View>
 
-      <ThemedText style={styles.clipDuration}>
-        Duration: {formatTime(endTime - startTime)}
-      </ThemedText>
+      {/* Time display row */}
+      <View style={styles.timeRow}>
+        <ThemedText style={styles.timeLabelSmall}>Start:</ThemedText>
+        <ThemedText style={styles.timeDisplay}>{formatTime(startTime)}</ThemedText>
+        <View style={styles.spacer} />
+        <ThemedText style={styles.timeLabelSmall}>End:</ThemedText>
+        <ThemedText style={styles.timeDisplay}>{formatTime(endTime)}</ThemedText>
+        <View style={styles.spacer} />
+        <ThemedText style={styles.timeLabelSmall}>Duration:</ThemedText>
+        <ThemedText style={styles.timeDisplay}>{formatTime(endTime - startTime)}</ThemedText>
+      </View>
 
-      <ThemedView style={styles.compactControls}>
+      {/* Timeline scrubber area */}
+      <View style={styles.scrubberContainer}>
+        <View style={styles.timelineTrack}>
+          <View 
+            style={[styles.timelineSelection, {
+              left: `${(startTime / duration) * 100}%`,
+              width: `${((endTime - startTime) / duration) * 100}%`
+            }]}
+          />
+          
+          {/* Start handle */}
+          <TouchableOpacity 
+            style={[styles.timelineHandle, {
+              left: `${(startTime / duration) * 100}%`
+            }]}
+            onPress={() => seekTo(startTime)}
+          >
+            <View style={styles.handleIndicator} />
+          </TouchableOpacity>
+          
+          {/* End handle */}
+          <TouchableOpacity 
+            style={[styles.timelineHandle, {
+              left: `${(endTime / duration) * 100}%`
+            }]}
+            onPress={() => seekTo(endTime)}
+          >
+            <View style={styles.handleIndicator} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Control buttons */}
+      <View style={styles.controlsRow}>
         <TouchableOpacity 
-          style={[styles.compactButton, isPreviewingClip && styles.activeButton]}
+          style={[styles.controlButton, isPreviewingClip && styles.activeButton]}
           onPress={playClip}
         >
-          <Ionicons name="play" size={20} color="#fff" />
-          <ThemedText style={styles.compactButtonText}>Preview</ThemedText>
+          <Ionicons name="play" size={22} color="#fff" />
+          <ThemedText style={styles.buttonLabel}>Preview</ThemedText>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.compactButton}
+          style={styles.controlButton}
           onPress={() => saveVideo(true)}
         >
-          <Ionicons name="save" size={20} color="#fff" />
-          <ThemedText style={styles.compactButtonText}>Save Clip</ThemedText>
+          <Ionicons name="save" size={22} color="#fff" />
+          <ThemedText style={styles.buttonLabel}>Save Clip</ThemedText>
         </TouchableOpacity>
-      </ThemedView>
+      </View>
     </ThemedView>
   );
 }
@@ -196,6 +211,184 @@ const formatTime = (seconds: number) => {
 };
 
 const styles = StyleSheet.create({
+  // Expanded editor styles
+  expandedContainer: {
+    backgroundColor: '#111',
+    width: '100%',
+    height: '100%',
+    padding: 10,
+    flexDirection: 'column',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  videoTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  titleCloseButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    flexWrap: 'wrap',
+  },
+  timeLabelSmall: {
+    color: '#aaa',
+    fontSize: 12,
+    marginRight: 5,
+  },
+  timeDisplay: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginRight: 10,
+  },
+  spacer: {
+    width: 10,
+  },
+  scrubberContainer: {
+    height: 40,
+    marginVertical: 10,
+    justifyContent: 'center',
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 10,
+  },
+  controlButton: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#333',
+    minWidth: 100,
+  },
+  buttonLabel: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  
+  // Timeline styles
+  timelineWrapper: {
+    flex: 1,
+    height: 30,
+    justifyContent: 'center',
+    marginHorizontal: 5,
+  },
+  
+  // Keep original timeline styles for compatibility
+  timelineContainer: {
+    backgroundColor: '#111',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginHorizontal: 0,
+    width: '100%',
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  timelineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    height: 32,
+  },
+  timelineButton: {
+    backgroundColor: '#333',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeButton: {
+    backgroundColor: '#00a86b',
+  },
+  timeLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  durationBadge: {
+    backgroundColor: '#00a86b',
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  timelineCloseButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineScrubber: {
+    height: 40,
+    marginTop: 4,
+    position: 'relative',
+  },
+  timelineTrack: {
+    backgroundColor: '#333',
+    height: 10,
+    borderRadius: 5,
+    marginHorizontal: 10,
+    marginTop: 15,
+    position: 'relative',
+  },
+  timelineSelection: {
+    position: 'absolute',
+    top: 0,
+    height: '100%',
+    backgroundColor: '#00a86b',
+    borderRadius: 5,
+  },
+  timelineHandle: {
+    position: 'absolute',
+    top: -5,
+    marginLeft: -10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#00a86b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  handleIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+  },
+  timelineSlider: {
+    position: 'absolute',
+    width: '100%',
+    height: 40,
+    opacity: 0.5, // Semi-transparent to show it's interactive
+    top: 0,
+  },
+
+  // Keep necessary old styles for compatibility
   container: { 
     padding: 12,
     backgroundColor: '#333',
@@ -213,16 +406,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  closeButton: {
-    padding: 5,
-  },
   compactSliderRow: {
     marginVertical: 5,
-  },
-  timeLabel: {
-    color: '#fff',
-    fontSize: 14,
-    marginVertical: 2,
   },
   compactSlider: {
     width: '100%',
@@ -251,42 +436,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     flexDirection: 'row',
   },
-  activeButton: {
-    backgroundColor: '#00a86b',
-  },
   compactButtonText: {
     color: '#fff',
     marginLeft: 5,
     fontSize: 14,
-  },
-  // Keep original styles for backward compatibility
-  sliderContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    marginBottom: 8,
-    color: '#fff'
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 8,
-  },
-  button: {
-    backgroundColor: '#222',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  buttonText: {
-    color: '#fff',
-    marginTop: 4,
   },
 }); 
