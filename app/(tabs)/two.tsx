@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { ThemedView } from '../components/ThemedView';
-import { SessionTimer } from '../components/SessionTimer';
-import { VideoStorage } from '../components/VideoStorage';
+import { ThemedView } from '../../components/ThemedView';
+import { SessionTimer } from '../../components/SessionTimer';
+import { VideoStorage } from '../../components/VideoStorage';
 
 export default function SavedClipsScreen() {
   return (

@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from 'react-native';
-import { TimerProvider } from './context/TimerContext';
+import { TimerProvider } from '../context/TimerContext';
 
 export {
   // Catch any errors thrown by the Layout component.

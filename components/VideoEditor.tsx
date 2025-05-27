@@ -10,14 +10,17 @@ interface VideoEditorProps {
   videoId: string;
   title: string;
   duration: number;
+  currentTime?: number; // Added currentTime prop
   onSave: () => void;
   webViewRef: any;
 }
 
-export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: VideoEditorProps): React.ReactElement {
+export function VideoEditor({ videoId, title, duration, currentTime: propCurrentTime, onSave, webViewRef }: VideoEditorProps): React.ReactElement {
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(duration);
-  const [currentTime, setCurrentTime] = useState(0);
+  // Use propCurrentTime if available, otherwise maintain local state or default to 0
+  const [internalCurrentTime, setInternalCurrentTime] = useState(0);
+  const displayCurrentTime = propCurrentTime !== undefined ? propCurrentTime : internalCurrentTime;
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPreviewingClip, setIsPreviewingClip] = useState(false);
 
@@ -33,16 +36,11 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
     if (isPreviewingClip) {
       interval = setInterval(() => {
         // Get current playback time
-        webViewRef.current?.injectJavaScript(`
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'currentTime',
-            value: window.player.getCurrentTime()
-          }));
-          true;
-        `);
+        webViewRef.current?.injectJavaScript(`window.getCurrentTime(); true;`);
         
         // Check if we need to loop back to start time
-        if (currentTime >= endTime) {
+        // Use displayCurrentTime for checks
+        if (displayCurrentTime >= endTime) {
           seekTo(startTime);
         }
       }, 500);
@@ -51,7 +49,7 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isPreviewingClip, currentTime, startTime, endTime]);
+  }, [isPreviewingClip, propCurrentTime, internalCurrentTime, startTime, endTime, webViewRef]);
 
   const saveVideo = async (isClip: boolean) => {
     try {
@@ -88,19 +86,11 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
     try {
       if (webViewRef && webViewRef.current) {
         console.log('Seeking to:', time);
-        webViewRef.current.injectJavaScript(`
-          if (window.executeCommand) {
-            window.executeCommand('seekTo', ${time});
-            console.log('Seek command executed via direct command');
-          } else if (window.player && window.player.seekTo) {
-            window.player.seekTo(${time});
-            console.log('Seek command sent to player directly');
-          } else {
-            console.log('Player not ready for seeking');
-          }
-          true;
-        `);
-        setCurrentTime(time);
+        webViewRef.current.injectJavaScript(`window.seekTo(${time}, true); true;`);
+        // When seeking, update internal state if not relying solely on prop
+        setInternalCurrentTime(time);
+        // If HomeScreen is expected to update propCurrentTime via messages, this might be redundant
+        // or could be a direct call to setCurrentVideoTime if passed down.
       } else {
         console.log('WebView ref not available');
       }
@@ -123,49 +113,30 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
         setIsPlaying(false);
         setIsPreviewingClip(false);
         
-        webViewRef.current?.injectJavaScript(`
-          if (window.pauseVideo) {
-            window.pauseVideo();
-          } else if (player) {
-            player.pauseVideo();
-          }
-          true;
-        `);
+        if (webViewRef.current) {
+          webViewRef.current.injectJavaScript(`window.pauseVideo(); true;`);
+        }
       } else {
         // If paused, start playing from the selected start time
         setIsPlaying(true);
         setIsPreviewingClip(true);
         
-        webViewRef.current?.injectJavaScript(`
-          // First seek to the start time
-          if (window.seekTo) {
-            window.seekTo(${startTime});
-          } else if (player) {
-            player.seekTo(${startTime}, true);
-          }
-          
-          // Then play the video
-          if (window.playVideo) {
+        if (webViewRef.current) {
+          webViewRef.current.injectJavaScript(`
+            window.seekTo(${startTime}, true);
             window.playVideo();
-          } else if (player) {
-            player.playVideo();
-          }
-          
-          // We'll set up a timer to pause at the end time
-          clearTimeout(window.clipEndTimer);
-          window.clipEndTimer = setTimeout(() => {
-            if (window.pauseVideo) {
+            
+            clearTimeout(window.clipEndTimer);
+            window.clipEndTimer = setTimeout(() => {
               window.pauseVideo();
-            } else if (player) {
-              player.pauseVideo();
-            }
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'clipEnded'
-            }));
-          }, (${endTime - startTime}) * 1000);
-          
-          true;
-        `);
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'clipEnded'
+              }));
+            }, (${endTime - startTime}) * 1000);
+            
+            true;
+          `);
+        }
       }
     } catch (error) {
       console.error('Error in playClip:', error);
@@ -214,7 +185,7 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
         <ThemedText style={styles.timeDisplay}>{formatTime(endTime)}</ThemedText>
         <View style={styles.spacer} />
         <ThemedText style={styles.timeLabelSmall}>Duration:</ThemedText>
-        <ThemedText style={styles.timeDisplay}>{formatTime(endTime - startTime)}</ThemedText>
+        <ThemedText style={styles.timeDisplay}>{formatTime(startTime)} - {formatTime(endTime)} (Current: {formatTime(displayCurrentTime)})</ThemedText>
       </View>
 
       {/* Timeline scrubber area */}

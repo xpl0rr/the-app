@@ -13,9 +13,9 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { ThemedText } from '../components/ThemedText';
-import { SessionTimer } from '../components/SessionTimer';
-import { VideoEditor } from '../components/VideoEditor';
+import { ThemedText } from '../../components/ThemedText';
+import { SessionTimer } from '../../components/SessionTimer';
+import { VideoEditor } from '../../components/VideoEditor';
 import WebView from 'react-native-webview';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +47,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<string | null>(null);
   const [currentVideoTitle, setCurrentVideoTitle] = useState('');
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [currentVideoTime, setCurrentVideoTime] = useState<number>(0);
   const webViewRef = useRef<WebView>(null);
   const API_KEY = (Constants.expoConfig?.extra?.googleApiKey as string) || '';
 
@@ -67,27 +69,37 @@ export default function HomeScreen() {
   const handleMessage = (event: any) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
-      
-      if (message.type === 'stateChange') {
-        // Process player state changes
+      console.log('WebView Message:', message); // Log the raw message
+
+      if (message.type === 'playerReady') {
+        console.log('Player is ready, waiting for full details.');
+      } else if (message.type === 'playerFullyReady') {
+        console.log('Player is fully ready with details:', message);
+        if (message.duration !== null && typeof message.duration === 'number') {
+          setVideoDuration(message.duration);
+        }
+        setCurrentVideoTime(0); 
+      } else if (message.type === 'currentTime') { // This is the correct place for currentTime
+        if (message.value !== null && typeof message.value === 'number') {
+          setCurrentVideoTime(message.value);
+          console.log('Current time updated from WebView:', message.value); // Specific log
+        }
+      } else if (message.type === 'clipEnded') {
+        console.log('Clip ended message received in HomeScreen');
+      } else if (message.type === 'playerStateChange') {
         console.log('Player state changed:', message.data);
-      } else if (message.type === 'currentTime') {
-        // Update current time for the editor
-        const duration = message.value || 0;
-        console.log('Current time update:', duration);
       } else if (message.type === 'openInYouTube') {
-        // Open the video in YouTube app or website
         const youtubeUrl = `https://www.youtube.com/watch?v=${message.videoId}`;
-        Linking.openURL(youtubeUrl).catch((err: Error) => {
-          console.error('Error opening YouTube link:', err);
-          Alert.alert('Error', 'Could not open YouTube link');
-        });
-      } else if (message.type === 'error') {
-        // Handle player errors
-        console.log('Player error:', message.data);
+        Linking.openURL(youtubeUrl).catch(err => console.error('Failed to open YouTube URL:', err));
+      } else if (message.type === 'playerError') {
+        console.error('Player Error:', message.data);
+        Alert.alert('Player Error', `Error code: ${message.data.errorCode}`);
+      } else if (message.type === 'log') { // For general logs from WebView
+        console.log('WebView Log:', message.message);
       }
+      // Add other message types as needed
     } catch (error) {
-      console.error('Error handling message:', error);
+      console.error('Error handling WebView message:', error);
     }
   };
 
@@ -127,195 +139,153 @@ export default function HomeScreen() {
       height="100%" 
       src="https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=1&modestbranding=1" 
       frameborder="0" 
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-      allowfullscreen
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
     ></iframe>
   `;
 
   // YouTube HTML for WebView - Enhanced with direct API access
   const getYoutubeHTML = (videoId: string) => `
-    <!DOCTYPE html>
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
           body { margin: 0; padding: 0; overflow: hidden; background-color: black; }
-          #player { width: 100%; height: 100%; position: relative; }
-          /* Play button overlay to ensure playing works */
-          #playButton {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100px; /* Larger button */
-            height: 100px; /* Larger button */
-            background-color: rgba(0,0,0,0.7);
-            border-radius: 50%;
-            z-index: 999; /* Very high z-index to ensure it's on top */
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24px;
-            border: 2px solid white;
-          }
-          #playButton.hidden { display: none; }
+          #player-container { width: 100vw; height: 100vh; }
         </style>
       </head>
       <body>
-        <div id="playerContainer" style="position: relative; width: 100%; height: 100%;">
-          <div id="player"></div>
-          <div id="playButton">▶</div>
+        <div id="player-container">
+          <!-- Player will be inserted here by JavaScript -->
         </div>
         <script>
-          // Direct YouTube API implementation
+          var player;
+          var isPlayerReady = false;
+          const videoId = '${videoId}'; // Ensure videoId is correctly interpolated
+
+          // Load the IFrame Player API code asynchronously.
           var tag = document.createElement('script');
           tag.src = "https://www.youtube.com/iframe_api";
           var firstScriptTag = document.getElementsByTagName('script')[0];
           firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-          var player;
-          var playerReady = false;
-          var playerLoaded = false;
-          var currentTime = 0;
-          
-          // Manual controls - needed because of YouTube restrictions
-          document.getElementById('playButton').addEventListener('click', function() {
-            if (player && playerReady) {
-              player.playVideo();
-              this.classList.add('hidden');
-            }
-          });
-
+          // This function creates an <iframe> (and YouTube player)
+          // after the API code downloads.
           function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', {
-              height: '100%',
-              width: '100%',
-              videoId: '${videoId}',
-              playerVars: {
-                playsinline: 1,
-                enablejsapi: 1,
-                autoplay: 0,
-                origin: window.location.origin,
-                controls: 1,
-                modestbranding: 1,
-                rel: 0
-              },
-              events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange,
-                'onError': onPlayerError
-              }
-            });
+            console.log('YouTube API Ready for video ID: ' + videoId);
+            try {
+              player = new YT.Player('player-container', { // Target the div
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: {
+                  'playsinline': 1,
+                  'controls': 1, // Show native controls
+                  'modestbranding': 1,
+                  'rel': 0,
+                  'showinfo': 0,
+                  'fs': 0, // Disable fullscreen button if not needed
+                  'iv_load_policy': 3
+                },
+                events: {
+                  'onReady': onPlayerReady,
+                  'onStateChange': onPlayerStateChange,
+                  'onError': onPlayerError
+                }
+              });
+            } catch (e) {
+              console.error('Error creating YT.Player:', e);
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playerCreationError', error: e.toString() }));
+            }
           }
 
+          // The API will call this function when the video player is ready.
           function onPlayerReady(event) {
-            // Make player globally available
-            window.player = player;
-            playerReady = true;
-            
-            // Send duration to React Native
+            console.log('Player ready for video ID: ' + videoId);
+            isPlayerReady = true;
+            window.player = event.target; // Expose player instance globally
+
             try {
-              var duration = player.getDuration() || 300;
+              var duration = player.getDuration() || 0;
               window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'playerReady',
+                type: 'playerFullyReady',
+                videoId: videoId,
                 duration: duration
               }));
-              playerLoaded = true;
-            } catch(e) {
-              console.log('Error getting duration:', e);
+            } catch (e) {
+              console.error('Error in onPlayerReady (getDuration):', e);
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playerReadyError', error: e.toString() }));
             }
-            
-            // Make the custom play button more visible
-            document.getElementById('playButton').style.opacity = 1;
-            
-            // Setup direct command access for the player
+
+            // Define global functions for React Native to call
             window.playVideo = function() {
-              if (player && playerReady) {
-                player.playVideo();
-                document.getElementById('playButton').classList.add('hidden');
+              if (isPlayerReady && window.player && typeof window.player.playVideo === 'function') {
+                window.player.playVideo();
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: true }));
                 return true;
+              } else {
+                console.warn('playVideo: Player not ready or function unavailable.');
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: false, error: 'Player not ready or playVideo unavailable' }));
+                return false;
               }
-              return false;
             };
-            
+
             window.pauseVideo = function() {
-              if (player && playerReady) {
-                player.pauseVideo();
-                document.getElementById('playButton').classList.remove('hidden');
+              if (isPlayerReady && window.player && typeof window.player.pauseVideo === 'function') {
+                window.player.pauseVideo();
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: true }));
                 return true;
+              } else {
+                console.warn('pauseVideo: Player not ready or function unavailable.');
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: false, error: 'Player not ready or pauseVideo unavailable' }));
+                return false;
               }
-              return false;
             };
-            
-            window.seekTo = function(seconds) {
-              if (player && playerReady) {
-                player.seekTo(seconds, true);
-                currentTime = seconds;
+
+            window.seekTo = function(seconds, allowSeekAhead) {
+              if (isPlayerReady && window.player && typeof window.player.seekTo === 'function') {
+                window.player.seekTo(seconds, allowSeekAhead);
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: true }));
                 return true;
+              } else {
+                console.warn('seekTo: Player not ready or function unavailable.');
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: false, error: 'Player not ready or seekTo unavailable' }));
+                return false;
               }
-              return false;
+            };
+
+            window.getCurrentTime = function() {
+              if (isPlayerReady && window.player && typeof window.player.getCurrentTime === 'function') {
+                var currentTimeValue = window.player.getCurrentTime();
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', value: currentTimeValue }));
+              } else {
+                console.warn('getCurrentTime: Player not ready or function unavailable.');
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', value: null, error: 'Player not ready or getCurrentTime unavailable' }));
+              }
             };
           }
 
+          // The API calls this function when the player's state changes.
           function onPlayerStateChange(event) {
-            // Send player state to React Native
+            var currentTime = (isPlayerReady && player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
             window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'stateChange',
-              data: event.data
-            }));
-            
-            // Also send current time on state change
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'currentTime',
-              value: player.getCurrentTime()
+              type: 'playerStateChange',
+              state: event.data,
+              currentTime: currentTime,
+              videoId: videoId
             }));
           }
-          
+
+          // The API calls this function when the player encounters an error.
           function onPlayerError(event) {
-            // Handle player errors
-            console.log('Player error:', event.data);
+            console.error('YouTube Player Error:', event.data);
             window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'error',
-              code: event.data
+              type: 'playerError',
+              errorCode: event.data,
+              videoId: videoId
             }));
-          }
-          
-          // Send periodic time updates
-          setInterval(function() {
-            if (player && player.getCurrentTime) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'currentTime',
-                value: player.getCurrentTime()
-              }));
-            }
-          }, 500);
           }
 
-          function onPlayerStateChange(event) {
-            // Send player state changes to React Native
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'stateChange',
-              data: event.data
-            }));
-            
-            // Also send current time on state change
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'currentTime',
-              value: player.getCurrentTime()
-            }));
-          }
-          
-          // Send periodic time updates
-          setInterval(function() {
-            if (player && player.getCurrentTime) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'currentTime',
-                value: player.getCurrentTime()
-              }));
-            }
-          }, 500);
+          console.log('Initial script loaded for video ID: ' + videoId);
         </script>
       </body>
     </html>
@@ -460,15 +430,16 @@ export default function HomeScreen() {
     },
     webview: {
       width: '100%',
-      height: 160, // Minimal height to fit at top
+      height: 240, // Increased height for better visibility
       backgroundColor: '#000',
+      overflow: 'hidden',
     },
     videoWrapper: {
       width: '100%',
-      height: 160, // Match webview height
+      height: 260, // Slightly more than webview to account for controls
       marginTop: 0,
-      marginBottom: 0,
-      paddingTop: 6, // Add padding above video
+      marginBottom: 10,
+      paddingTop: 10, // Add padding above video
       backgroundColor: '#000',
       alignSelf: 'flex-start', // Pin to top
     },
@@ -535,83 +506,68 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {!currentVideo ? (
-        // SEARCH VIEW - Show when no video is selected
-        <>
-          {/* Header with Title - Only show when not searching */}
-          {videos.length === 0 && (
-            <View style={styles.headerContainer}>
-              <ThemedText style={styles.header}>
-                Download And Loop
-                <ThemedText style={styles.header}>
-                  {'\n'}YouTube Videos
-                </ThemedText>
-              </ThemedText>
-            </View>
-          )}
-          
-          {/* Search Bar - Top position when searching, centered otherwise */}
-          <View style={videos.length > 0 ? styles.topSearchContainer : styles.centeredSearchContainer}>
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color="#666" />
-              <TextInput
-                style={styles.input}
-                placeholder="Search YouTube"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearch}
-                returnKeyType="search"
-                placeholderTextColor="#666"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity 
-                  onPress={() => {
-                    setSearchQuery('');
-                    setVideos([]);
-                  }} 
-                  style={styles.clearButton}
-                >
-                  <Ionicons name="close-circle" size={20} color="#666" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+  const onShouldStartLoadWithRequest = (request: any /* WebViewNavigation */) => {
+    const { url } = request;
+    console.log('WebView attempting to load URL:', url);
 
-          {/* Content Area for Search Results */}
-          <View style={styles.contentContainer}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#0000ff" />
-            ) : (
-              <FlatList
-                data={videos}
-                keyExtractor={(item) => item.id.videoId}
-                renderItem={renderVideoItem}
-                style={styles.videoList}
-              />
-            )}
-          </View>
-          
-          {/* Session Timer */}
-          <SessionTimer variant="main" />
-        </>
-      ) : (
-        // VIDEO VIEW - Show when a video is selected
+    // Allow our initial HTML load (data URI or about:blank)
+    if (url.startsWith('data:text/html') || url === 'about:blank') {
+      console.log('Allowing initial HTML load');
+      return true;
+    }
+
+    // Allow navigations necessary for the YouTube IFrame Player API
+    const allowedEmbedDomains = [
+      'https://www.youtube.com/embed/',
+      'https://www.youtube-nocookie.com/embed/',
+      'https://www.youtube.com/iframe_api', // The API script itself
+      'https://www.youtube.com/', // Allow the base YouTube domain for API context
+      'https://s.ytimg.com/', // Static assets for the player
+      'https://googleads.g.doubleclick.net/', // Ads, often part of YouTube
+      'https://static.doubleclick.net/'
+      // Add other domains if legitimate player resources are blocked
+    ];
+
+    if (allowedEmbedDomains.some(domain => url.startsWith(domain))) {
+      console.log('Allowing YouTube API/embed related URL:', url);
+      return true;
+    }
+
+    // Specifically block navigation to full YouTube watch pages or mobile site
+    if (url.includes('youtube.com/watch') || url.startsWith('https://m.youtube.com') || url.includes('youtu.be/')) {
+      console.log('DENYING navigation to YouTube watch/mobile page:', url);
+      return false;
+    }
+    
+    console.log('WebView onShouldStartLoadWithRequest: Review and decide for URL:', url, '-> Defaulting to DENY.');
+    // Default to false for unhandled cases to be safer.
+    // If the player breaks, check console logs for URLs being denied that might be essential.
+    return false;
+  };
+
+  // Simplified return with cleaner structure
+  if (currentVideo) {
+    // VIDEO VIEW - Show when a video is selected
+    return (
+      <SafeAreaView style={styles.container}>
         <View style={styles.videoContentContainer}>
           <SafeAreaView style={{ flex: 1, width: '100%' }}>
             {/* Video Player Section - Add top padding to ensure visibility */}
             <View style={[styles.videoWrapper, { paddingTop: 24 }]}>
               <WebView
                 ref={webViewRef}
-                source={{ html: getYoutubeHTML(currentVideo) }}
-                style={[styles.webview, { height: 200 }]}
+                source={{ html: getYoutubeHTML(currentVideo), baseUrl: 'https://www.youtube.com' }}
+                style={[styles.webview, { height: 240 }]} /* Increased height for better visibility */
                 onMessage={handleMessage}
                 javaScriptEnabled={true}
                 allowsInlineMediaPlayback={true}
                 mediaPlaybackRequiresUserAction={false}
                 domStorageEnabled={true}
                 scrollEnabled={false}
+                bounces={false}
+                /* Ensure the WebView responds to all events */
+                allowsFullscreenVideo={false}
+                onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
               />
             </View>
             
@@ -620,14 +576,76 @@ export default function HomeScreen() {
               <VideoEditor
                 videoId={currentVideo}
                 title={currentVideoTitle || 'Untitled Video'}
-                duration={300} // Default to 5 minutes until we get actual duration
+                duration={videoDuration} // Pass actual duration
+                currentTime={currentVideoTime} // Pass current time
                 onSave={() => setCurrentVideo(null)}
                 webViewRef={webViewRef}
               />
             </View>
           </SafeAreaView>
         </View>
+      </SafeAreaView>
+    );
+  }
+  
+  // SEARCH VIEW - Show when no video is selected
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header with Title - Only show when not searching */}
+      {videos.length === 0 && (
+        <View style={styles.headerContainer}>
+          <ThemedText style={styles.header}>
+            Download And Loop
+            <ThemedText style={styles.header}>
+              {"\n"}YouTube Videos
+            </ThemedText>
+          </ThemedText>
+        </View>
       )}
+      
+      {/* Search Bar - Top position when searching, centered otherwise */}
+      <View style={videos.length > 0 ? styles.topSearchContainer : styles.centeredSearchContainer}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#666" />
+          <TextInput
+            style={styles.input}
+            placeholder="Search YouTube"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+            placeholderTextColor="#666"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity 
+              onPress={() => {
+                setSearchQuery('');
+                setVideos([]);
+              }} 
+              style={styles.clearButton}
+            >
+              <Ionicons name="close-circle" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Content Area for Search Results */}
+      <View style={styles.contentContainer}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#0000ff" />
+        ) : (
+          <FlatList
+            data={videos}
+            keyExtractor={(item) => item.id.videoId}
+            renderItem={renderVideoItem}
+            style={styles.videoList}
+          />
+        )}
+      </View>
+      
+      {/* Session Timer */}
+      <SessionTimer variant="main" />
     </SafeAreaView>
   );
 }
