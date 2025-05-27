@@ -99,13 +99,25 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
       return;
     }
     
-    seekTo(startTime);
-    setIsPreviewingClip(true);
-    webViewRef.current?.injectJavaScript(`
-      window.player.playVideo();
-      true;
-    `);
-    setIsPlaying(true);
+    // Toggle between playing and pausing
+    if (isPreviewingClip) {
+      // If already previewing, pause the clip
+      webViewRef.current?.injectJavaScript(`
+        window.player.pauseVideo();
+        true;
+      `);
+      setIsPreviewingClip(false);
+      setIsPlaying(false);
+    } else {
+      // Start preview from the clip start time
+      seekTo(startTime);
+      setIsPreviewingClip(true);
+      webViewRef.current?.injectJavaScript(`
+        window.player.playVideo();
+        true;
+      `);
+      setIsPlaying(true);
+    }
   };
 
   const handleSliderStartChange = (value: number) => {
@@ -179,6 +191,39 @@ export function VideoEditor({ videoId, title, duration, onSave, webViewRef }: Vi
           >
             <View style={styles.handleIndicator} />
           </TouchableOpacity>
+        </View>
+        
+        {/* Sliders for precise control */}
+        <View style={styles.slidersContainer}>
+          <View style={styles.sliderRow}>
+            <ThemedText style={styles.sliderLabel}>Start:</ThemedText>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={duration}
+              value={startTime}
+              onValueChange={handleSliderStartChange}
+              minimumTrackTintColor="#555"
+              maximumTrackTintColor="#333"
+              thumbTintColor="#00a86b"
+              step={1}
+            />
+          </View>
+          
+          <View style={styles.sliderRow}>
+            <ThemedText style={styles.sliderLabel}>End:</ThemedText>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={duration}
+              value={endTime}
+              onValueChange={handleSliderEndChange}
+              minimumTrackTintColor="#555"
+              maximumTrackTintColor="#333"
+              thumbTintColor="#00a86b"
+              step={1}
+            />
+          </View>
         </View>
       </View>
 
@@ -260,9 +305,26 @@ const styles = StyleSheet.create({
     width: 10,
   },
   scrubberContainer: {
-    height: 40,
     marginVertical: 10,
     justifyContent: 'center',
+  },
+  slidersContainer: {
+    marginTop: 20,
+    width: '100%',
+  },
+  sliderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sliderLabel: {
+    color: '#aaa',
+    fontSize: 12,
+    width: 50,
+  },
+  slider: {
+    flex: 1,
+    height: 40,
   },
   controlsRow: {
     flexDirection: 'row',

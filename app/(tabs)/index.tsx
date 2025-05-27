@@ -64,8 +64,16 @@ export default function HomeScreen() {
   // Handle WebView messages
   const handleMessage = (event: any) => {
     try {
-      const state = parseInt(event.nativeEvent.data);
-      // Handle player state changes if needed
+      const message = JSON.parse(event.nativeEvent.data);
+      
+      if (message.type === 'stateChange') {
+        // Process player state changes
+        console.log('Player state changed:', message.data);
+      } else if (message.type === 'currentTime') {
+        // Update current time for the editor
+        const duration = message.value || 0;
+        console.log('Current time update:', duration);
+      }
     } catch (error) {
       console.error('Error handling message:', error);
     }
@@ -106,7 +114,7 @@ export default function HomeScreen() {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-          body { margin: 0; padding: 0; overflow: hidden; }
+          body { margin: 0; padding: 0; overflow: hidden; background-color: black; }
           #player { width: 100%; height: 100%; }
         </style>
       </head>
@@ -127,7 +135,10 @@ export default function HomeScreen() {
               playerVars: {
                 playsinline: 1,
                 enablejsapi: 1,
-                origin: window.location.origin
+                origin: window.location.origin,
+                controls: 0,
+                showinfo: 0,
+                rel: 0
               },
               events: {
                 'onReady': onPlayerReady,
@@ -136,9 +147,25 @@ export default function HomeScreen() {
             });
           }
 
-
           function onPlayerReady(event) {
-            // Player is ready
+            // Expose player to window for external control
+            window.player = player;
+            
+            // Send ready event
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'playerReady',
+              duration: player.getDuration()
+            }));
+            
+            // Start periodic time updates
+            setInterval(function() {
+              if (player && player.getCurrentTime) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'currentTime',
+                  value: player.getCurrentTime()
+                }));
+              }
+            }, 500);
           }
 
           function onPlayerStateChange(event) {
@@ -220,7 +247,7 @@ export default function HomeScreen() {
       height: '100%',
       alignItems: 'center',
       justifyContent: 'flex-start',
-      paddingTop: 0,
+      paddingTop: 24, // Status bar height + extra space
       paddingBottom: 0,
       backgroundColor: '#000',
       position: 'relative',
@@ -300,6 +327,7 @@ export default function HomeScreen() {
       height: 160, // Match webview height
       marginTop: 0,
       marginBottom: 0,
+      paddingTop: 6, // Add padding above video
       backgroundColor: '#000',
       alignSelf: 'flex-start', // Pin to top
     },
@@ -309,6 +337,7 @@ export default function HomeScreen() {
       flexDirection: 'column',
       justifyContent: 'flex-start', // Align to top
       alignItems: 'center',
+      marginTop: 8, // Add space at the top
     },
     editorWrapper: {
       width: '100%',
@@ -448,7 +477,7 @@ export default function HomeScreen() {
               <VideoEditor
                 videoId={currentVideo}
                 title={currentVideoTitle || 'Untitled Video'}
-                duration={0}
+                duration={300} // Default to 5 minutes until we get actual duration
                 onSave={() => setCurrentVideo(null)}
                 webViewRef={webViewRef}
               />
