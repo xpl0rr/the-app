@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, TouchableOpacity, Alert, View } from 'react-native';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
@@ -13,16 +13,35 @@ interface VideoEditorProps {
   currentTime?: number; // Added currentTime prop
   onSave: () => void;
   webViewRef: any;
+  videoPlayerReady: boolean;
 }
 
-export function VideoEditor({ videoId, title, duration, currentTime: propCurrentTime, onSave, webViewRef }: VideoEditorProps): React.ReactElement {
+export function VideoEditor({ videoId, title, duration, currentTime: propCurrentTime, onSave, webViewRef, videoPlayerReady }: VideoEditorProps): React.ReactElement {
+  // State declarations
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(duration);
-  // Use propCurrentTime if available, otherwise maintain local state or default to 0
-  const [internalCurrentTime, setInternalCurrentTime] = useState(0);
-  const displayCurrentTime = propCurrentTime !== undefined ? propCurrentTime : internalCurrentTime;
+  const [internalCurrentTime, setInternalCurrentTime] = useState(0); // Internal tracking, updated by prop or direct manipulation
+  const [displayCurrentTime, setDisplayCurrentTime] = useState(propCurrentTime !== undefined ? propCurrentTime : 0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPreviewingClip, setIsPreviewingClip] = useState(false);
+
+  // Ref declarations - initialized with state values
+  const startTimeRef = useRef(startTime);
+  const endTimeRef = useRef(endTime);
+  const displayCurrentTimeRef = useRef(displayCurrentTime);
+
+  // Update refs when their corresponding state changes
+  useEffect(() => { startTimeRef.current = startTime; }, [startTime]);
+  useEffect(() => { endTimeRef.current = endTime; }, [endTime]);
+  useEffect(() => { displayCurrentTimeRef.current = displayCurrentTime; }, [displayCurrentTime]);
+
+  // Update internal current time if propCurrentTime changes (e.g., from WebView messages)
+  useEffect(() => {
+    if (propCurrentTime !== undefined) {
+      setInternalCurrentTime(propCurrentTime);
+      setDisplayCurrentTime(propCurrentTime);
+    }
+  }, [propCurrentTime]);
 
   // Reset end time when duration changes
   useEffect(() => {
@@ -32,24 +51,52 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
   // Setup interval to check current time during playback
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
-    
-    if (isPreviewingClip) {
+
+    if (isPreviewingClip && videoPlayerReady) {
+      // Ensure video starts playing from the designated startTime when preview begins
+      if (webViewRef.current) {
+        console.log(`VideoEditor: Starting preview. Seeking to ${startTimeRef.current} and playing.`);
+        webViewRef.current.injectJavaScript(`
+          window.seekTo(${startTimeRef.current}, true);
+          window.playVideo();
+          true;
+        `);
+      }
+
       interval = setInterval(() => {
-        // Get current playback time
-        webViewRef.current?.injectJavaScript(`window.getCurrentTime(); true;`);
-        
-        // Check if we need to loop back to start time
-        // Use displayCurrentTime for checks
-        if (displayCurrentTime >= endTime) {
-          seekTo(startTime);
+        if (videoPlayerReady && webViewRef.current) { // Guard getCurrentTime
+          webViewRef.current.injectJavaScript(`window.getCurrentTime(); true;`);
         }
-      }, 500);
+
+        // Log values for debugging using refs
+        console.log(`VideoEditor Loop Check: displayCurrentTime=${displayCurrentTimeRef.current}, endTime=${endTimeRef.current}, conditionMet=${displayCurrentTimeRef.current >= endTimeRef.current}`);
+
+        if (displayCurrentTimeRef.current >= endTimeRef.current && videoPlayerReady && webViewRef.current) { // Guard loop's seek/play
+          console.log(`VideoEditor Loop Condition MET. Seeking to ${startTimeRef.current} and playing.`);
+          webViewRef.current.injectJavaScript(`
+            window.seekTo(${startTimeRef.current}, true);
+            window.playVideo();
+            true;
+          `);
+        } else if (webViewRef.current) {
+          // console.log('VideoEditor Loop Condition NOT MET.'); // Optional: can be noisy
+        }
+      }, 500); // Check every 500ms
+    } else {
+      // If not previewing, ensure the video is paused
+      if (videoPlayerReady && webViewRef.current) { // Guard pauseVideo
+        webViewRef.current.injectJavaScript(`window.pauseVideo(); true;`);
+      }
     }
-    
+
     return () => {
       if (interval) clearInterval(interval);
+      // Ensure video is paused when the component unmounts or isPreviewingClip becomes false
+      if (videoPlayerReady && webViewRef.current) { // Guard pauseVideo in cleanup
+        webViewRef.current.injectJavaScript(`window.pauseVideo(); true;`);
+      }
     };
-  }, [isPreviewingClip, propCurrentTime, internalCurrentTime, startTime, endTime, webViewRef]);
+  }, [isPreviewingClip, videoPlayerReady, startTime, endTime, webViewRef]);
 
   const saveVideo = async (isClip: boolean) => {
     try {
@@ -84,7 +131,7 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
 
   const seekTo = (time: number) => {
     try {
-      if (webViewRef && webViewRef.current) {
+      if (videoPlayerReady && webViewRef && webViewRef.current) { // Guard seekTo
         console.log('Seeking to:', time);
         webViewRef.current.injectJavaScript(`window.seekTo(${time}, true); true;`);
         // When seeking, update internal state if not relying solely on prop
@@ -100,47 +147,24 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
   };
 
   const playClip = () => {
-    // Basic validation
-    if (startTime >= endTime) {
+    if (startTime >= endTime && !isPlaying) { // only validate if trying to start play
       Alert.alert("Invalid Selection", "End time must be greater than start time");
       return;
     }
-    
+
     try {
-      // Toggle between play and pause
-      if (isPlaying) {
-        // If already playing, pause the video
+      if (isPlaying) { // If currently playing (and thus previewing a loop)
         setIsPlaying(false);
-        setIsPreviewingClip(false);
-        
-        if (webViewRef.current) {
-          webViewRef.current.injectJavaScript(`window.pauseVideo(); true;`);
-        }
-      } else {
-        // If paused, start playing from the selected start time
+        setIsPreviewingClip(false); // This will trigger the useEffect cleanup to pause video
+      } else { // If paused, start playing the loop
         setIsPlaying(true);
-        setIsPreviewingClip(true);
-        
-        if (webViewRef.current) {
-          webViewRef.current.injectJavaScript(`
-            window.seekTo(${startTime}, true);
-            window.playVideo();
-            
-            clearTimeout(window.clipEndTimer);
-            window.clipEndTimer = setTimeout(() => {
-              window.pauseVideo();
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'clipEnded'
-              }));
-            }, (${endTime - startTime}) * 1000);
-            
-            true;
-          `);
-        }
+        setIsPreviewingClip(true); // This will trigger the useEffect to start the loop
+        // The useEffect now handles seeking to startTime and playing.
+        // No immediate JS injection needed here as useEffect will handle it.
       }
     } catch (error) {
       console.error('Error in playClip:', error);
-      // Revert UI state if there was an error
+      // Revert UI state in case of an error during state transition
       setIsPreviewingClip(false);
       setIsPlaying(false);
     }

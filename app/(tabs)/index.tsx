@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -49,8 +49,19 @@ export default function HomeScreen() {
   const [currentVideoTitle, setCurrentVideoTitle] = useState('');
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [currentVideoTime, setCurrentVideoTime] = useState<number>(0);
+  const [videoPlayerReady, setVideoPlayerReady] = useState<boolean>(false);
   const webViewRef = useRef<WebView>(null);
   const API_KEY = (Constants.expoConfig?.extra?.googleApiKey as string) || '';
+
+  useEffect(() => {
+    if (currentVideo === null) {
+      setVideoPlayerReady(false);
+      // Optionally reset other video-specific states
+      setVideoDuration(0);
+      setCurrentVideoTime(0);
+      setCurrentVideoTitle('');
+    }
+  }, [currentVideo]);
 
   // Extract video ID from URL
   const extractVideoId = (url: string): string | null => {
@@ -63,6 +74,9 @@ export default function HomeScreen() {
   const handleVideoSelect = (video: VideoItem) => {
     setCurrentVideo(video.id.videoId);
     setCurrentVideoTitle(video.snippet.title);
+    setVideoPlayerReady(false);
+    setVideoDuration(0); // Reset duration for new video
+    setCurrentVideoTime(0); // Reset time for new video
   };
 
   // Handle WebView messages
@@ -79,6 +93,7 @@ export default function HomeScreen() {
           setVideoDuration(message.duration);
         }
         setCurrentVideoTime(0); 
+        setVideoPlayerReady(true);
       } else if (message.type === 'currentTime') { // This is the correct place for currentTime
         if (message.value !== null && typeof message.value === 'number') {
           setCurrentVideoTime(message.value);
@@ -112,6 +127,9 @@ export default function HomeScreen() {
       setCurrentVideo(videoId);
       setCurrentVideoTitle('YouTube Video');
       setVideos([]);
+      setVideoPlayerReady(false);
+      setVideoDuration(0);
+      setCurrentVideoTime(0);
       return;
     }
 
@@ -578,8 +596,12 @@ export default function HomeScreen() {
                 title={currentVideoTitle || 'Untitled Video'}
                 duration={videoDuration} // Pass actual duration
                 currentTime={currentVideoTime} // Pass current time
-                onSave={() => setCurrentVideo(null)}
+                onSave={() => {
+                  setCurrentVideo(null);
+                  // videoPlayerReady will be set to false by the useEffect watching currentVideo
+                }}
                 webViewRef={webViewRef}
+                videoPlayerReady={videoPlayerReady}
               />
             </View>
           </SafeAreaView>
