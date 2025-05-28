@@ -11,12 +11,14 @@ interface VideoEditorProps {
   title: string;
   duration: number;
   currentTime?: number; // Added currentTime prop
-  onSave: () => void;
-  webViewRef: any;
+  onSave: (title: string, startTime: number, endTime: number) => void;
+  webViewRef: any; // Consider more specific type if possible, e.g., RefObject<WebView>
   videoPlayerReady: boolean;
+  initialStartTime?: number;
+  initialEndTime?: number;
 }
 
-export function VideoEditor({ videoId, title, duration, currentTime: propCurrentTime, onSave, webViewRef, videoPlayerReady }: VideoEditorProps): React.ReactElement {
+export function VideoEditor({ videoId, title, duration, currentTime: propCurrentTime, onSave, webViewRef, videoPlayerReady, initialStartTime, initialEndTime }: VideoEditorProps): React.ReactElement {
   // State declarations
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(duration);
@@ -43,10 +45,16 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
     }
   }, [propCurrentTime]);
 
-  // Reset end time when duration changes
+  // Effect to initialize/reset startTime and endTime based on props or duration changes
   useEffect(() => {
-    setEndTime(duration);
-  }, [duration]);
+    // When a saved clip is loaded, initialStartTime/EndTime will have values
+    // Otherwise, for a new video, they'll be undefined.
+    setStartTime(initialStartTime !== undefined ? initialStartTime : 0);
+    setEndTime(initialEndTime !== undefined ? initialEndTime : duration);
+    // Update refs for immediate use if needed by other effects
+    startTimeRef.current = initialStartTime !== undefined ? initialStartTime : 0;
+    endTimeRef.current = initialEndTime !== undefined ? initialEndTime : duration;
+  }, [duration, initialStartTime, initialEndTime]);
 
   // Setup interval to check current time during playback
   useEffect(() => {
@@ -98,35 +106,16 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
     };
   }, [isPreviewingClip, videoPlayerReady, startTime, endTime, webViewRef]);
 
-  const saveVideo = async (isClip: boolean) => {
-    try {
-      // Basic validation
-      if (isClip && startTime >= endTime) {
-        Alert.alert("Invalid Selection", "End time must be greater than start time");
-        return;
-      }
-      
-      const savedVideos = await AsyncStorage.getItem('savedVideos');
-      const videos = savedVideos ? JSON.parse(savedVideos) : [];
-      
-      const newVideo = {
-        id: Date.now().toString(),
-        title,
-        videoId,
-        startTime: isClip ? startTime : 0,
-        endTime: isClip ? endTime : duration,
-        isClip,
-        savedAt: Date.now(),
-      };
+  const handleSave = (isClip: boolean) => {
+    const finalStartTime = isClip ? startTime : 0;
+    const finalEndTime = isClip ? endTime : duration;
 
-      videos.push(newVideo);
-      await AsyncStorage.setItem('savedVideos', JSON.stringify(videos));
-      onSave();
-      Alert.alert('Success', `Video ${isClip ? 'clip' : ''} saved successfully!`);
-    } catch (error) {
-      console.error('Error saving video:', error);
-      Alert.alert('Error', 'Failed to save video');
+    if (isClip && finalStartTime >= finalEndTime) {
+      Alert.alert("Invalid Selection", "End time must be greater than start time for a clip.");
+      return;
     }
+    // Call the onSave prop passed from HomeScreen with the determined values
+    onSave(title, finalStartTime, finalEndTime);
   };
 
   const seekTo = (time: number) => {
@@ -194,7 +183,7 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
         <ThemedText style={styles.videoTitle}>{title}</ThemedText>
         <TouchableOpacity 
           style={styles.titleCloseButton}
-          onPress={onSave}
+          onPress={() => handleSave(true)} // Assume close saves current clip settings
         >
           <Ionicons name="close" size={18} color="#fff" />
         </TouchableOpacity>
@@ -289,10 +278,18 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
 
         <TouchableOpacity 
           style={styles.controlButton}
-          onPress={() => saveVideo(true)}
+          onPress={() => handleSave(true)} // Save as clip
         >
-          <Ionicons name="save" size={22} color="#fff" />
+          <Ionicons name="save-outline" size={22} color="#fff" />
           <ThemedText style={styles.buttonLabel}>Save Clip</ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.controlButton}
+          onPress={() => handleSave(false)} // Save full video
+        >
+          <Ionicons name="albums-outline" size={22} color="#fff" />
+          <ThemedText style={styles.buttonLabel}>Save Full</ThemedText>
         </TouchableOpacity>
       </View>
     </ThemedView>

@@ -4,8 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import WebView from 'react-native-webview';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation, NavigationProp } from '@react-navigation/native';
 
 interface SavedVideo {
   id: string;
@@ -17,11 +16,20 @@ interface SavedVideo {
   savedAt: number;
 }
 
+// Define a type for the navigation parameters expected by the 'index' route
+type RootStackParamList = {
+  index: {
+    videoId: string;
+    title: string;
+    startTime?: number;
+    endTime?: number;
+  };
+  // Add other routes here if your app has more screens in this navigator
+};
+
 export function VideoStorage() {
   const [savedVideos, setSavedVideos] = useState<SavedVideo[]>([]);
-  const [selectedVideo, setSelectedVideo] = useState<SavedVideo | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const webViewRef = useRef<WebView>(null);
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   // Rename dialog state
   const [renameModalVisible, setRenameModalVisible] = useState(false);
@@ -69,16 +77,15 @@ export function VideoStorage() {
   };
 
   const playVideo = (video: SavedVideo) => {
-    setSelectedVideo(video);
-    setModalVisible(true);
+    navigation.navigate('index', {
+      videoId: video.videoId,
+      title: video.title,
+      startTime: video.startTime,
+      endTime: video.endTime,
+    });
   };
 
-  const closeModal = () => {
-    setModalVisible(false);
-    setSelectedVideo(null);
-  };
-
-  const getYoutubePlayerHTML = (video: SavedVideo) => {
+  /* const getYoutubePlayerHTML = (video: SavedVideo) => { // This function is no longer needed
     return `
     <!DOCTYPE html>
     <html>
@@ -167,7 +174,7 @@ export function VideoStorage() {
       </body>
     </html>
     `;
-  };
+  }; */ // End of commented out getYoutubePlayerHTML
 
   const handleRenamePress = (video: SavedVideo) => {
     setRenameValue(video.title);
@@ -204,7 +211,9 @@ export function VideoStorage() {
               style={styles.videoInfo}
               onPress={() => playVideo(video)}
             >
-              <ThemedText style={styles.videoTitle}>{video.title}</ThemedText>
+              <ThemedText style={styles.videoTitle}>
+                {typeof video.title === 'string' ? video.title : '[Untitled Video]'}
+              </ThemedText>
               <ThemedText style={styles.videoDetails}>
                 {video.isClip ? `Clip: ${formatTime(video.startTime || 0)} - ${formatTime(video.endTime || 0)}` : 'Full Video'}
               </ThemedText>
@@ -230,34 +239,7 @@ export function VideoStorage() {
         )}
       </ScrollView>
 
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={closeModal}
-      >
-        <ThemedView style={styles.modalContainer}>
-          <ThemedView style={styles.modalHeader}>
-            <ThemedText style={styles.modalTitle}>
-              {selectedVideo?.title}
-            </ThemedText>
-            <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
-          </ThemedView>
-          <ThemedView style={styles.playerContainer}>
-            {selectedVideo && (
-              <WebView
-                ref={webViewRef}
-                style={styles.webView}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-                source={{ html: getYoutubePlayerHTML(selectedVideo) }}
-              />
-            )}
-          </ThemedView>
-        </ThemedView>
-      </Modal>
+      {/* Playback Modal removed, playback now handled by HomeScreen via navigation */}
 
       {/* Rename Video Modal */}
       <Modal

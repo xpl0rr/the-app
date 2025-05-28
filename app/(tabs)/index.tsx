@@ -19,6 +19,18 @@ import { VideoEditor } from '../../components/VideoEditor';
 import WebView from 'react-native-webview';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
+import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
+
+// Define a type for the navigation parameters
+type RootStackParamList = {
+  index: { // Assuming 'index' is the route name for HomeScreen
+    videoId?: string; // Make optional for initial load
+    title?: string;
+    startTime?: number;
+    endTime?: number;
+  };
+  // Add other routes here if your app has more screens in this navigator
+};
 
 type VideoItem = {
   id: { videoId: string };
@@ -42,26 +54,79 @@ const YT = {
 
 export default function HomeScreen() {
   // State
+  const route = useRoute<RouteProp<RootStackParamList, 'index'>>();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [searchQuery, setSearchQuery] = useState('');
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentVideo, setCurrentVideo] = useState<string | null>(null);
+  const [currentVideo, setCurrentVideo] = useState<VideoItem | null>(null);
   const [currentVideoTitle, setCurrentVideoTitle] = useState('');
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [currentVideoTime, setCurrentVideoTime] = useState<number>(0);
   const [videoPlayerReady, setVideoPlayerReady] = useState<boolean>(false);
+  const [initialClipStartTime, setInitialClipStartTime] = useState<number | undefined>(undefined);
+  const [initialClipEndTime, setInitialClipEndTime] = useState<number | undefined>(undefined);
   const webViewRef = useRef<WebView>(null);
   const API_KEY = (Constants.expoConfig?.extra?.googleApiKey as string) || '';
 
   useEffect(() => {
     if (currentVideo === null) {
       setVideoPlayerReady(false);
-      // Optionally reset other video-specific states
       setVideoDuration(0);
       setCurrentVideoTime(0);
       setCurrentVideoTitle('');
+      setInitialClipStartTime(undefined); // Reset clip times
+      setInitialClipEndTime(undefined);   // Reset clip times
     }
   }, [currentVideo]);
+
+  // SIMULATE LOADING A SAVED CLIP (e.g. via navigation params)
+  // In a real scenario, this effect would listen to route.params from react-navigation
+  // For now, you can manually trigger this by calling a function that sets these states.
+  // Example: const loadSavedClip = (clip) => { /* set states here */ }
+  // useEffect(() => {
+  //   const clipToLoad = route.params?.savedClip; // Example from react-navigation
+  //   if (clipToLoad) {
+  //     setCurrentVideo(clipToLoad.videoId);
+  //     setCurrentVideoTitle(clipToLoad.title);
+  //     setInitialClipStartTime(clipToLoad.startTime);
+  //     setInitialClipEndTime(clipToLoad.endTime);
+  //     setCurrentVideoTime(clipToLoad.startTime); // Start playback from here
+  //     setVideoPlayerReady(false); // Player will re-initialize
+  //     // Clear params if necessary: navigation.setParams({ savedClip: undefined })
+  //   }
+  // }, [route.params?.savedClip]);
+
+  // Effect to handle incoming navigation parameters for saved clips
+  useEffect(() => {
+    const params = route.params;
+    if (params && params.videoId) {
+      const navigatedClipData: VideoItem = {
+        id: { videoId: params.videoId },
+        snippet: {
+          title: params.title || 'Video',
+          description: '', // Placeholder
+          thumbnails: { default: { url: '' } } // Placeholder
+        }
+      };
+      setCurrentVideo(navigatedClipData);
+      setCurrentVideoTitle(params.title || 'Video');
+      setInitialClipStartTime(params.startTime);
+      setInitialClipEndTime(params.endTime);
+      setCurrentVideoTime(params.startTime || 0);
+      setVideoPlayerReady(false); // Ensure player re-initializes
+      setSearchQuery(''); // Clear search
+      setVideos([]);    // Clear search results
+
+      // Clear the params to prevent re-triggering
+      navigation.setParams({
+        videoId: undefined,
+        title: undefined,
+        startTime: undefined,
+        endTime: undefined,
+      });
+    }
+  }, [route.params?.videoId, navigation]); // Depend on videoId from params
 
   // Extract video ID from URL
   const extractVideoId = (url: string): string | null => {
@@ -72,11 +137,13 @@ export default function HomeScreen() {
 
   // Handle video selection
   const handleVideoSelect = (video: VideoItem) => {
-    setCurrentVideo(video.id.videoId);
+    setCurrentVideo(video);
     setCurrentVideoTitle(video.snippet.title);
+    setInitialClipStartTime(undefined); // Reset for non-clipped video
+    setInitialClipEndTime(undefined);   // Reset for non-clipped video
     setVideoPlayerReady(false);
-    setVideoDuration(0); // Reset duration for new video
-    setCurrentVideoTime(0); // Reset time for new video
+    setVideoDuration(0);
+    setCurrentVideoTime(0);
   };
 
   // Handle WebView messages
@@ -95,14 +162,14 @@ export default function HomeScreen() {
         setCurrentVideoTime(0); 
         setVideoPlayerReady(true);
       } else if (message.type === 'currentTime') { // This is the correct place for currentTime
-        if (message.value !== null && typeof message.value === 'number') {
-          setCurrentVideoTime(message.value);
-          console.log('Current time updated from WebView:', message.value); // Specific log
+        if (message.time !== null && typeof message.time === 'number') {
+          setCurrentVideoTime(message.time);
+          console.log('Current time updated from WebView:', message.time); // Specific log
         }
       } else if (message.type === 'clipEnded') {
         console.log('Clip ended message received in HomeScreen');
       } else if (message.type === 'playerStateChange') {
-        console.log('Player state changed:', message.data);
+        console.log('Player state changed:', message.state, 'at time:', message.currentTime);
       } else if (message.type === 'openInYouTube') {
         const youtubeUrl = `https://www.youtube.com/watch?v=${message.videoId}`;
         Linking.openURL(youtubeUrl).catch(err => console.error('Failed to open YouTube URL:', err));
@@ -124,9 +191,19 @@ export default function HomeScreen() {
 
     const videoId = extractVideoId(searchQuery);
     if (videoId) {
-      setCurrentVideo(videoId);
+      const videoDataItem: VideoItem = {
+        id: { videoId: videoId },
+        snippet: {
+          title: 'YouTube Video', // Consider fetching actual title later if needed
+          description: '',
+          thumbnails: { default: { url: '' } }
+        }
+      };
+      setCurrentVideo(videoDataItem);
       setCurrentVideoTitle('YouTube Video');
       setVideos([]);
+      setInitialClipStartTime(undefined); // Reset for non-clipped video
+      setInitialClipEndTime(undefined);   // Reset for non-clipped video
       setVideoPlayerReady(false);
       setVideoDuration(0);
       setCurrentVideoTime(0);
@@ -162,7 +239,9 @@ export default function HomeScreen() {
   `;
 
   // YouTube HTML for WebView - Enhanced with direct API access
-  const getYoutubeHTML = (videoId: string) => `
+  const getYoutubeHTML = (videoId: string, startSeconds?: number, endSeconds?: number) => {
+    console.log('getYoutubeHTML called with videoId:', videoId, 'startSeconds:', startSeconds, 'endSeconds:', endSeconds);
+    return `
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -189,6 +268,7 @@ export default function HomeScreen() {
           // This function creates an <iframe> (and YouTube player)
           // after the API code downloads.
           function onYouTubeIframeAPIReady() {
+            console.log('onYouTubeIframeAPIReady: Creating player with videoId:', videoId, 'playerVars.start:', (startSeconds !== undefined ? startSeconds : undefined), 'playerVars.end:', (endSeconds !== undefined ? endSeconds : undefined));
             console.log('YouTube API Ready for video ID: ' + videoId);
             try {
               player = new YT.Player('player-container', { // Target the div
@@ -196,13 +276,12 @@ export default function HomeScreen() {
                 width: '100%',
                 videoId: videoId,
                 playerVars: {
-                  'playsinline': 1,
-                  'controls': 1, // Show native controls
-                  'modestbranding': 1,
-                  'rel': 0,
-                  'showinfo': 0,
-                  'fs': 0, // Disable fullscreen button if not needed
-                  'iv_load_policy': 3
+                  playsinline: 1,
+                  controls: 1, // Show controls
+                  modestbranding: 1, // Hide YouTube logo as much as possible
+                  autoplay: 1, // Autoplay when loaded
+                  start: startSeconds !== undefined ? startSeconds : undefined,
+                  end: endSeconds !== undefined ? endSeconds : undefined,
                 },
                 events: {
                   'onReady': onPlayerReady,
@@ -236,55 +315,106 @@ export default function HomeScreen() {
 
             // Define global functions for React Native to call
             window.playVideo = function() {
-              if (isPlayerReady && window.player && typeof window.player.playVideo === 'function') {
-                window.player.playVideo();
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: true }));
-                return true;
+              const p = window.player;
+              if (isPlayerReady && p && typeof p.playVideo === 'function') {
+                try {
+                  p.playVideo();
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: true }));
+                  return true;
+                } catch (e) {
+                  console.error('Error calling p.playVideo():', e.toString(), 'window.player was:', window.player, 'p was:', p);
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoError', error: e.toString() }));
+                  return false;
+                }
               } else {
-                console.warn('playVideo: Player not ready or function unavailable.');
+                console.warn('playVideo: Player not ready or function unavailable. isPlayerReady:', isPlayerReady, 'window.player:', window.player, 'p:', p);
                 window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: false, error: 'Player not ready or playVideo unavailable' }));
                 return false;
               }
             };
 
             window.pauseVideo = function() {
-              if (isPlayerReady && window.player && typeof window.player.pauseVideo === 'function') {
-                window.player.pauseVideo();
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: true }));
-                return true;
+              const p = window.player;
+              if (isPlayerReady && p && typeof p.pauseVideo === 'function') {
+                try {
+                  p.pauseVideo();
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: true }));
+                  return true;
+                } catch (e) {
+                  console.error('Error calling p.pauseVideo():', e.toString(), 'window.player was:', window.player, 'p was:', p);
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoError', error: e.toString() }));
+                  return false;
+                }
               } else {
-                console.warn('pauseVideo: Player not ready or function unavailable.');
+                console.warn('pauseVideo: Player not ready or function unavailable. isPlayerReady:', isPlayerReady, 'window.player:', window.player, 'p:', p);
                 window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: false, error: 'Player not ready or pauseVideo unavailable' }));
                 return false;
               }
             };
 
             window.seekTo = function(seconds, allowSeekAhead) {
-              if (isPlayerReady && window.player && typeof window.player.seekTo === 'function') {
-                window.player.seekTo(seconds, allowSeekAhead);
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: true }));
-                return true;
+              const p = window.player;
+              if (isPlayerReady && p && typeof p.seekTo === 'function') {
+                try {
+                  p.seekTo(seconds, allowSeekAhead);
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: true }));
+                  return true;
+                } catch (e) {
+                  console.error('Error calling p.seekTo():', e.toString(), 'window.player was:', window.player, 'p was:', p);
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToError', error: e.toString() }));
+                  return false;
+                }
               } else {
-                console.warn('seekTo: Player not ready or function unavailable.');
+                console.warn('seekTo: Player not ready or function unavailable. isPlayerReady:', isPlayerReady, 'window.player:', window.player, 'p:', p);
                 window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: false, error: 'Player not ready or seekTo unavailable' }));
                 return false;
               }
             };
 
             window.getCurrentTime = function() {
-              if (isPlayerReady && window.player && typeof window.player.getCurrentTime === 'function') {
-                var currentTimeValue = window.player.getCurrentTime();
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', value: currentTimeValue }));
-              } else {
-                console.warn('getCurrentTime: Player not ready or function unavailable.');
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', value: null, error: 'Player not ready or getCurrentTime unavailable' }));
+              const p = window.player;
+              try {
+                if (isPlayerReady && p && typeof p.getCurrentTime === 'function') {
+                  var currentTime = p.getCurrentTime();
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', time: currentTime }));
+                  return currentTime;
+                } else {
+                  console.warn('getCurrentTime: Player not ready or function unavailable. isPlayerReady:', isPlayerReady, 'window.player:', window.player, 'p:', p);
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', time: null, error: 'Player not ready or getCurrentTime unavailable' }));
+                  return null;
+                }
+              } catch (e) {
+                console.error('Error calling p.getCurrentTime():', e.toString(), 'window.player was:', window.player, 'p was:', p);
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'getCurrentTimeError', error: e.toString() }));
+                return null;
               }
             };
-          }
 
           // The API calls this function when the player's state changes.
           function onPlayerStateChange(event) {
             var currentTime = (isPlayerReady && player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
+
+            // Check if the video ended AND if an endSeconds (clip end time) was originally set for the player
+            if (event.data === YT.PlayerState.ENDED && typeof endSeconds === 'number') {
+              // If a clip end time was set, loop back to startSeconds (or 0 if startSeconds is undefined)
+              const loopStartTime = typeof startSeconds === 'number' ? startSeconds : 0;
+              if (player && typeof player.seekTo === 'function' && typeof player.playVideo === 'function') {
+                player.seekTo(loopStartTime, true);
+                player.playVideo();
+                // Post a message indicating a loop occurred
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'clipLooped',
+                  videoId: videoId,
+                  currentTime: loopStartTime // new current time after seek
+                }));
+                // It's important to still send the original state change if other logic depends on seeing ENDED
+                // However, for looping, the immediate next states will be BUFFERING/PLAYING.
+                // To avoid potential confusion, we can either return here or ensure RN side handles this.
+                // For now, let's let the original message also go through, or just the loop message.
+                // Let's send the 'playerStateChange' as well, as the player DID end before looping.
+              }
+            }
+
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'playerStateChange',
               state: event.data,
@@ -307,7 +437,8 @@ export default function HomeScreen() {
         </script>
       </body>
     </html>
-  `;
+    `;
+  };
 
   // Styles
   const styles = StyleSheet.create({
@@ -564,7 +695,7 @@ export default function HomeScreen() {
   };
 
   // Simplified return with cleaner structure
-  if (currentVideo) {
+  if (currentVideo && currentVideo.id) { // Ensure currentVideo.id is also defined
     // VIDEO VIEW - Show when a video is selected
     return (
       <SafeAreaView style={styles.container}>
@@ -574,7 +705,11 @@ export default function HomeScreen() {
             <View style={[styles.videoWrapper, { paddingTop: 24 }]}>
               <WebView
                 ref={webViewRef}
-                source={{ html: getYoutubeHTML(currentVideo), baseUrl: 'https://www.youtube.com' }}
+                key={(currentVideo && currentVideo.id) ? `${currentVideo.id.videoId}-${initialClipStartTime}-${initialClipEndTime}` : 'webview-initial'}
+                source={{ 
+                  html: getYoutubeHTML(currentVideo.id!.videoId, initialClipStartTime, initialClipEndTime), // Added non-null assertion for id as it's checked in the outer if 
+                  baseUrl: 'https://www.youtube.com'
+                }}
                 style={[styles.webview, { height: 240 }]} /* Increased height for better visibility */
                 onMessage={handleMessage}
                 javaScriptEnabled={true}
@@ -591,18 +726,23 @@ export default function HomeScreen() {
             
             {/* Editor below video */}
             <View style={styles.editorWrapper}>
-              <VideoEditor
-                videoId={currentVideo}
-                title={currentVideoTitle || 'Untitled Video'}
-                duration={videoDuration} // Pass actual duration
-                currentTime={currentVideoTime} // Pass current time
-                onSave={() => {
-                  setCurrentVideo(null);
-                  // videoPlayerReady will be set to false by the useEffect watching currentVideo
-                }}
-                webViewRef={webViewRef}
-                videoPlayerReady={videoPlayerReady}
-              />
+              {currentVideo && (
+                <VideoEditor
+                  videoId={currentVideo.id!.videoId} // Pass the video ID, checked by outer if
+                  title={currentVideoTitle} // Pass the video title
+                  duration={videoDuration} // Pass actual duration
+                  currentTime={currentVideoTime} // Pass current time
+                  onSave={(title: string, startTime: number, endTime: number) => {
+                    saveClip(title, startTime, endTime).then(() => {
+                      setCurrentVideo(null); // Reset after saving
+                    });
+                  }}
+                  webViewRef={webViewRef}
+                  videoPlayerReady={videoPlayerReady}
+                  initialStartTime={initialClipStartTime}
+                  initialEndTime={initialClipEndTime}
+                />
+              )}
             </View>
           </SafeAreaView>
         </View>
