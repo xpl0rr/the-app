@@ -255,9 +255,14 @@ export default function HomeScreen() {
           <!-- Player will be inserted here by JavaScript -->
         </div>
         <script>
+          // Diagnostic: Script execution started
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: Script execution started for videoId: ' + '${videoId}' + ', start: ' + ${startSeconds} + ', end: ' + ${endSeconds} }));
+
           var player;
           var isPlayerReady = false;
           const videoId = '${videoId}'; // Ensure videoId is correctly interpolated
+          const startSeconds = ${startSeconds};
+          const endSeconds = ${endSeconds};
 
           // Load the IFrame Player API code asynchronously.
           var tag = document.createElement('script');
@@ -268,6 +273,8 @@ export default function HomeScreen() {
           // This function creates an <iframe> (and YouTube player)
           // after the API code downloads.
           function onYouTubeIframeAPIReady() {
+            // Diagnostic: onYouTubeIframeAPIReady called
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onYouTubeIframeAPIReady called for videoId: ' + videoId + ', start: ' + startSeconds + ', end: ' + endSeconds }));
             console.log('onYouTubeIframeAPIReady: Creating player with videoId:', videoId, 'playerVars.start:', (startSeconds !== undefined ? startSeconds : undefined), 'playerVars.end:', (endSeconds !== undefined ? endSeconds : undefined));
             console.log('YouTube API Ready for video ID: ' + videoId);
             try {
@@ -289,14 +296,20 @@ export default function HomeScreen() {
                   'onError': onPlayerError
                 }
               });
+              // Diagnostic: After new YT.Player()
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: YT.Player instantiation attempted for videoId: ' + videoId }));
             } catch (e) {
               console.error('Error creating YT.Player:', e);
               window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playerCreationError', error: e.toString() }));
+              // Diagnostic: Error creating YT.Player
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: Error creating YT.Player: ' + e.toString() }));
             }
           }
 
           // The API will call this function when the video player is ready.
           function onPlayerReady(event) {
+            // Diagnostic: onPlayerReady called
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onPlayerReady called for videoId: ' + videoId }));
             console.log('Player ready for video ID: ' + videoId);
             isPlayerReady = true;
             window.player = event.target; // Expose player instance globally
@@ -392,6 +405,8 @@ export default function HomeScreen() {
 
           // The API calls this function when the player's state changes.
           function onPlayerStateChange(event) {
+            // Diagnostic: onPlayerStateChange called
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onPlayerStateChange called. State: ' + event.data + ', videoId: ' + videoId + ', endSec: ' + endSeconds }));
             var currentTime = (isPlayerReady && player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
 
             // Check if the video ended AND if an endSeconds (clip end time) was originally set for the player
@@ -401,6 +416,8 @@ export default function HomeScreen() {
               if (player && typeof player.seekTo === 'function' && typeof player.playVideo === 'function') {
                 player.seekTo(loopStartTime, true);
                 player.playVideo();
+                // Diagnostic: Clip loop initiated
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: Clip loop initiated. Seeking to: ' + loopStartTime + ', videoId: ' + videoId }));
                 // Post a message indicating a loop occurred
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'clipLooped',
