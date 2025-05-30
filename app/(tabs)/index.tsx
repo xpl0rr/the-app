@@ -270,6 +270,16 @@ export default function HomeScreen() {
     }
   }, [route.params?.videoId, navigation]); // Depend on videoId from params
 
+  // Effect to set initialClipEndTime when videoDuration becomes available for a new video
+  useEffect(() => {
+    // Only act if videoDuration is valid and initialClipEndTime is undefined
+    // (indicating a new video load, not a clip loaded from params/storage).
+    // initialClipStartTime is set to 0 in handleVideoSelect for new videos.
+    if (videoDuration > 0 && initialClipEndTime === undefined) {
+      setInitialClipEndTime(videoDuration);
+    }
+  }, [videoDuration, initialClipEndTime]); // Rerun if videoDuration changes or initialClipEndTime changes (e.g. from undefined)
+
   // Save clip to AsyncStorage
   const saveClip = async (title: string, startTime: number, endTime: number) => {
     if (!currentVideo || !currentVideo.id) {
@@ -319,10 +329,10 @@ export default function HomeScreen() {
   const handleVideoSelect = (video: VideoItem) => {
     setCurrentVideo(video);
     setCurrentVideoTitle(video.snippet.title);
-    setInitialClipStartTime(undefined); // Reset for non-clipped video
-    setInitialClipEndTime(undefined);   // Reset for non-clipped video
+    setInitialClipStartTime(0); // Default start time to 0 for a new video
+    setInitialClipEndTime(undefined); // End time will be set by videoDuration effect
     setVideoPlayerReady(false);
-    setVideoDuration(0);
+    // Do NOT setVideoDuration(0) here; wait for player to report actual duration
     setCurrentVideoTime(0);
   };
 

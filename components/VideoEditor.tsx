@@ -239,7 +239,7 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
             <Slider
               style={styles.slider}
               minimumValue={0}
-              maximumValue={duration}
+              maximumValue={Math.max(1, duration)}
               value={startTime}
               onValueChange={handleSliderStartChange}
               minimumTrackTintColor="#555"
@@ -254,7 +254,7 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
             <Slider
               style={styles.slider}
               minimumValue={0}
-              maximumValue={duration}
+              maximumValue={Math.max(1, duration)}
               value={endTime}
               onValueChange={handleSliderEndChange}
               minimumTrackTintColor="#555"
