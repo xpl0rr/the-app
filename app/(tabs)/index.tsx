@@ -248,21 +248,45 @@ export default function HomeScreen() {
         <style>
           body { margin: 0; padding: 0; overflow: hidden; background-color: black; }
           #player-container { width: 100vw; height: 100vh; }
+          #message_container_test { position: absolute; top: 10px; left: 10px; background-color: rgba(255,255,255,0.8); color: black; padding: 5px; font-size: 10px; z-index: 9999; border-radius: 3px; }
         </style>
       </head>
       <body>
         <div id="player-container">
           <!-- Player will be inserted here by JavaScript -->
         </div>
+        <div id="message_container_test">Initial test...</div>
         <script>
-          // Diagnostic: Script execution started
+          // --- INITIAL SCRIPT TEST BLOCK ---
+          try {
+            const testMessageContainer = document.getElementById('message_container_test');
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'INITIAL_SCRIPT_TEST',
+                payload: 'Initial script test from full HTML!',
+                videoId: '${videoId}',
+                timestamp: new Date().toISOString()
+              }));
+              if (testMessageContainer) testMessageContainer.textContent = 'INITIAL_SCRIPT_TEST: Message SENT!';
+            } else {
+              if (testMessageContainer) testMessageContainer.textContent = 'INITIAL_SCRIPT_TEST: ERROR - postMessage unavailable.';
+              console.error('INITIAL_SCRIPT_TEST: window.ReactNativeWebView.postMessage is not available.');
+            }
+          } catch (e) {
+            const testMessageContainer = document.getElementById('message_container_test');
+            if (testMessageContainer) testMessageContainer.textContent = 'INITIAL_SCRIPT_TEST: ERROR - Exception: ' + e.toString();
+            console.error('INITIAL_SCRIPT_TEST: Exception: ', e);
+          }
+          // --- END INITIAL SCRIPT TEST BLOCK ---
+
+          // Diagnostic: Script execution started (original first line)
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: Script execution started for videoId: ' + '${videoId}' + ', start: ' + ${startSeconds} + ', end: ' + ${endSeconds} }));
 
           var player;
           var isPlayerReady = false;
-          const videoId = '${videoId}'; // Ensure videoId is correctly interpolated
-          const startSeconds = ${startSeconds};
-          const endSeconds = ${endSeconds};
+          const videoId_player = '${videoId}'; // Renamed to avoid conflict with outer scope if any confusion, though JS scoping should handle it.
+          const startSeconds_player = ${startSeconds};
+          const endSeconds_player = ${endSeconds};
 
           // Load the IFrame Player API code asynchronously.
           var tag = document.createElement('script');
@@ -274,21 +298,20 @@ export default function HomeScreen() {
           // after the API code downloads.
           function onYouTubeIframeAPIReady() {
             // Diagnostic: onYouTubeIframeAPIReady called
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onYouTubeIframeAPIReady called for videoId: ' + videoId + ', start: ' + startSeconds + ', end: ' + endSeconds }));
-            console.log('onYouTubeIframeAPIReady: Creating player with videoId:', videoId, 'playerVars.start:', (startSeconds !== undefined ? startSeconds : undefined), 'playerVars.end:', (endSeconds !== undefined ? endSeconds : undefined));
-            console.log('YouTube API Ready for video ID: ' + videoId);
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onYouTubeIframeAPIReady called for videoId: ' + videoId_player + ', start: ' + startSeconds_player + ', end: ' + endSeconds_player }));
+            console.log('onYouTubeIframeAPIReady: Creating player with videoId:', videoId_player, 'playerVars.start:', (startSeconds_player !== undefined ? startSeconds_player : undefined), 'playerVars.end:', (endSeconds_player !== undefined ? endSeconds_player : undefined));
             try {
               player = new YT.Player('player-container', { // Target the div
                 height: '100%',
                 width: '100%',
-                videoId: videoId,
+                videoId: videoId_player,
                 playerVars: {
                   playsinline: 1,
                   controls: 1, // Show controls
                   modestbranding: 1, // Hide YouTube logo as much as possible
                   autoplay: 1, // Autoplay when loaded
-                  start: startSeconds !== undefined ? startSeconds : undefined,
-                  end: endSeconds !== undefined ? endSeconds : undefined,
+                  start: startSeconds_player !== undefined ? startSeconds_player : undefined,
+                  end: endSeconds_player !== undefined ? endSeconds_player : undefined,
                 },
                 events: {
                   'onReady': onPlayerReady,
@@ -297,20 +320,18 @@ export default function HomeScreen() {
                 }
               });
               // Diagnostic: After new YT.Player()
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: YT.Player instantiation attempted for videoId: ' + videoId }));
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: YT.Player instantiation attempted for videoId: ' + videoId_player }));
             } catch (e) {
               console.error('Error creating YT.Player:', e);
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playerCreationError', error: e.toString() }));
-              // Diagnostic: Error creating YT.Player
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: Error creating YT.Player: ' + e.toString() }));
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playerCreationError', error: e.toString(), videoId: videoId_player }));
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: Error creating YT.Player: ' + e.toString() + ' for videoId: ' + videoId_player}));
             }
           }
 
           // The API will call this function when the video player is ready.
           function onPlayerReady(event) {
             // Diagnostic: onPlayerReady called
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onPlayerReady called for videoId: ' + videoId }));
-            console.log('Player ready for video ID: ' + videoId);
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onPlayerReady called for videoId: ' + videoId_player }));
             isPlayerReady = true;
             window.player = event.target; // Expose player instance globally
 
@@ -318,12 +339,12 @@ export default function HomeScreen() {
               var duration = player.getDuration() || 0;
               window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'playerFullyReady',
-                videoId: videoId,
+                videoId: videoId_player,
                 duration: duration
               }));
             } catch (e) {
               console.error('Error in onPlayerReady (getDuration):', e);
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playerReadyError', error: e.toString() }));
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playerReadyError', error: e.toString(), videoId: videoId_player }));
             }
 
             // Define global functions for React Native to call
@@ -332,16 +353,16 @@ export default function HomeScreen() {
               if (isPlayerReady && p && typeof p.playVideo === 'function') {
                 try {
                   p.playVideo();
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: true }));
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: true, videoId: videoId_player }));
                   return true;
                 } catch (e) {
-                  console.error('Error calling p.playVideo():', e.toString(), 'window.player was:', window.player, 'p was:', p);
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoError', error: e.toString() }));
+                  console.error('Error calling p.playVideo():', e.toString());
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoError', error: e.toString(), videoId: videoId_player }));
                   return false;
                 }
               } else {
-                console.warn('playVideo: Player not ready or function unavailable. isPlayerReady:', isPlayerReady, 'window.player:', window.player, 'p:', p);
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: false, error: 'Player not ready or playVideo unavailable' }));
+                console.warn('playVideo: Player not ready or function unavailable.');
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'playVideoCalled', success: false, error: 'Player not ready or playVideo unavailable', videoId: videoId_player }));
                 return false;
               }
             };
@@ -351,16 +372,16 @@ export default function HomeScreen() {
               if (isPlayerReady && p && typeof p.pauseVideo === 'function') {
                 try {
                   p.pauseVideo();
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: true }));
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: true, videoId: videoId_player }));
                   return true;
                 } catch (e) {
-                  console.error('Error calling p.pauseVideo():', e.toString(), 'window.player was:', window.player, 'p was:', p);
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoError', error: e.toString() }));
+                  console.error('Error calling p.pauseVideo():', e.toString());
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoError', error: e.toString(), videoId: videoId_player }));
                   return false;
                 }
               } else {
-                console.warn('pauseVideo: Player not ready or function unavailable. isPlayerReady:', isPlayerReady, 'window.player:', window.player, 'p:', p);
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: false, error: 'Player not ready or pauseVideo unavailable' }));
+                console.warn('pauseVideo: Player not ready or function unavailable.');
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pauseVideoCalled', success: false, error: 'Player not ready or pauseVideo unavailable', videoId: videoId_player }));
                 return false;
               }
             };
@@ -370,16 +391,16 @@ export default function HomeScreen() {
               if (isPlayerReady && p && typeof p.seekTo === 'function') {
                 try {
                   p.seekTo(seconds, allowSeekAhead);
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: true }));
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: true, videoId: videoId_player }));
                   return true;
                 } catch (e) {
-                  console.error('Error calling p.seekTo():', e.toString(), 'window.player was:', window.player, 'p was:', p);
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToError', error: e.toString() }));
+                  console.error('Error calling p.seekTo():', e.toString());
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToError', error: e.toString(), videoId: videoId_player }));
                   return false;
                 }
               } else {
-                console.warn('seekTo: Player not ready or function unavailable. isPlayerReady:', isPlayerReady, 'window.player:', window.player, 'p:', p);
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: false, error: 'Player not ready or seekTo unavailable' }));
+                console.warn('seekTo: Player not ready or function unavailable.');
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seekToCalled', seconds: seconds, success: false, error: 'Player not ready or seekTo unavailable', videoId: videoId_player }));
                 return false;
               }
             };
@@ -389,46 +410,37 @@ export default function HomeScreen() {
               try {
                 if (isPlayerReady && p && typeof p.getCurrentTime === 'function') {
                   var currentTime = p.getCurrentTime();
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', time: currentTime }));
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', time: currentTime, videoId: videoId_player }));
                   return currentTime;
                 } else {
-                  console.warn('getCurrentTime: Player not ready or function unavailable. isPlayerReady:', isPlayerReady, 'window.player:', window.player, 'p:', p);
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', time: null, error: 'Player not ready or getCurrentTime unavailable' }));
+                  console.warn('getCurrentTime: Player not ready or function unavailable.');
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentTime', time: null, error: 'Player not ready or getCurrentTime unavailable', videoId: videoId_player }));
                   return null;
                 }
               } catch (e) {
-                console.error('Error calling p.getCurrentTime():', e.toString(), 'window.player was:', window.player, 'p was:', p);
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'getCurrentTimeError', error: e.toString() }));
+                console.error('Error calling p.getCurrentTime():', e.toString());
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'getCurrentTimeError', error: e.toString(), videoId: videoId_player }));
                 return null;
               }
             };
+          }
 
           // The API calls this function when the player's state changes.
           function onPlayerStateChange(event) {
-            // Diagnostic: onPlayerStateChange called
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onPlayerStateChange called. State: ' + event.data + ', videoId: ' + videoId + ', endSec: ' + endSeconds }));
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: onPlayerStateChange called. State: ' + event.data + ', videoId: ' + videoId_player + ', endSec: ' + endSeconds_player }));
             var currentTime = (isPlayerReady && player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
 
-            // Check if the video ended AND if an endSeconds (clip end time) was originally set for the player
-            if (event.data === YT.PlayerState.ENDED && typeof endSeconds === 'number') {
-              // If a clip end time was set, loop back to startSeconds (or 0 if startSeconds is undefined)
-              const loopStartTime = typeof startSeconds === 'number' ? startSeconds : 0;
+            if (event.data === YT.PlayerState.ENDED && typeof endSeconds_player === 'number') {
+              const loopStartTime = typeof startSeconds_player === 'number' ? startSeconds_player : 0;
               if (player && typeof player.seekTo === 'function' && typeof player.playVideo === 'function') {
                 player.seekTo(loopStartTime, true);
                 player.playVideo();
-                // Diagnostic: Clip loop initiated
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: Clip loop initiated. Seeking to: ' + loopStartTime + ', videoId: ' + videoId }));
-                // Post a message indicating a loop occurred
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: 'WebView JS: Clip loop initiated. Seeking to: ' + loopStartTime + ', videoId: ' + videoId_player }));
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'clipLooped',
-                  videoId: videoId,
-                  currentTime: loopStartTime // new current time after seek
+                  videoId: videoId_player,
+                  currentTime: loopStartTime
                 }));
-                // It's important to still send the original state change if other logic depends on seeing ENDED
-                // However, for looping, the immediate next states will be BUFFERING/PLAYING.
-                // To avoid potential confusion, we can either return here or ensure RN side handles this.
-                // For now, let's let the original message also go through, or just the loop message.
-                // Let's send the 'playerStateChange' as well, as the player DID end before looping.
               }
             }
 
@@ -436,21 +448,26 @@ export default function HomeScreen() {
               type: 'playerStateChange',
               state: event.data,
               currentTime: currentTime,
-              videoId: videoId
+              videoId: videoId_player
             }));
           }
 
-          // The API calls this function when the player encounters an error.
           function onPlayerError(event) {
-            console.error('YouTube Player Error:', event.data);
+            console.error('Player Error:', event.data);
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'playerError',
-              errorCode: event.data,
-              videoId: videoId
+              videoId: videoId_player,
+              data: event.data
             }));
           }
 
-          console.log('Initial script loaded for video ID: ' + videoId);
+          function openInYouTube() {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'openInYouTube',
+              videoId: videoId_player
+            }));
+          }
+
         </script>
       </body>
     </html>
