@@ -20,6 +20,7 @@ import WebView from 'react-native-webview';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define a type for the navigation parameters
 type RootStackParamList = {
@@ -127,6 +128,41 @@ export default function HomeScreen() {
       });
     }
   }, [route.params?.videoId, navigation]); // Depend on videoId from params
+
+  // Save clip to AsyncStorage
+  const saveClip = async (title: string, startTime: number, endTime: number) => {
+    if (!currentVideo || !currentVideo.id) {
+      console.error('Cannot save clip: currentVideo or currentVideo.id is null');
+      Alert.alert('Error', 'Could not save clip. Video data is missing.');
+      return;
+    }
+
+    const newClip = {
+      id: currentVideo.id.videoId, // Store the raw videoId string
+      title: title,
+      startTime: startTime,
+      endTime: endTime,
+      originalVideoTitle: currentVideo.snippet.title, // Store original title for reference
+      thumbnailUrl: currentVideo.snippet.thumbnails.default.url, // Store thumbnail for display in saved list
+    };
+
+    try {
+      const existingClipsJson = await AsyncStorage.getItem('savedClips');
+      const clips = existingClipsJson ? JSON.parse(existingClipsJson) : [];
+      
+      clips.push(newClip);
+      
+      await AsyncStorage.setItem('savedClips', JSON.stringify(clips));
+      console.log('Clip saved successfully:', newClip);
+      Alert.alert('Clip Saved', `"${title}" has been saved.`);
+      // After saving, clear currentVideo to return to search/list view
+      // This is already handled by the .then(() => setCurrentVideo(null)) in the onSave prop
+    } catch (error) {
+      console.error('Error saving clip to AsyncStorage:', error);
+      Alert.alert('Save Error', 'Failed to save the clip. Please try again.');
+    }
+  };
+
 
   // Extract video ID from URL
   const extractVideoId = (url: string): string | null => {
