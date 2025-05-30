@@ -342,45 +342,50 @@ export default function HomeScreen() {
   const handleMessage = (event: any) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
-      console.log('WebView Message:', message); // Log the raw message
+      console.log('[HomeScreen handleMessage PARSED]:', message); // Log the parsed message
+      console.log('[HomeScreen handleMessage] Checking message.event:', message.event);
 
-      if (message.type === 'playerReady') {
+      if (message.event === 'playerReady') {
         console.log('[HomeScreen handleMessage] Player is ready. Message:', message);
-        if (message.duration !== null && typeof message.duration === 'number') {
+        if (message.duration !== null && typeof message.duration === 'number' && message.duration > 0) {
           console.log('[HomeScreen handleMessage] playerReady: Setting videoDuration to', message.duration);
           setVideoDuration(message.duration);
         } else {
-          console.log('[HomeScreen handleMessage] playerReady: Duration not found or invalid in message.');
+          console.log('[HomeScreen handleMessage] playerReady: Duration not found, invalid, or zero in message. Duration:', message.duration);
         }
-      } else if (message.type === 'playerFullyReady') {
+      } else if (message.event === 'playerFullyReady') {
         console.log('[HomeScreen handleMessage] Player is fully ready. Message:', message);
-        // If duration is also reliably sent here, could also set it, but primary capture is in playerReady
-        // if (message.duration !== null && typeof message.duration === 'number') {
+        // Consider if duration should also be set here as a fallback, if available and valid.
+        // if (message.duration !== null && typeof message.duration === 'number' && message.duration > 0) {
         //   console.log('[HomeScreen handleMessage] playerFullyReady: Setting videoDuration to', message.duration);
-        //   setVideoDuration(message.duration);
+        //   setVideoDuration(message.duration); 
         // }
         setCurrentVideoTime(0); 
         setVideoPlayerReady(true);
-      } else if (message.type === 'currentTime') { // This is the correct place for currentTime
+      } else if (message.event === 'currentTime') {
         if (message.time !== null && typeof message.time === 'number') {
           setCurrentVideoTime(message.time);
-          console.log('Current time updated from WebView:', message.time); // Specific log
+          // console.log('Current time updated from WebView:', message.time); // Kept commented for less verbose logs
         }
-      } else if (message.type === 'clipEnded') {
+      } else if (message.event === 'clipEnded') {
         console.log('Clip ended message received in HomeScreen');
-      } else if (message.type === 'playerStateChange') {
-        console.log('Player state changed:', message.state, 'at time:', message.currentTime);
-      } else if (message.type === 'openInYouTube') {
+        // You might want to add logic here, e.g., replay, go to next, etc.
+      } else if (message.event === 'playerStateChange') {
+        console.log('[HomeScreen handleMessage] Player state changed:', message.state, 'at time:', message.currentTime);
+        // You can react to different player states (playing, paused, ended, etc.)
+      } else if (message.event === 'openInYouTube') {
         const youtubeUrl = `https://www.youtube.com/watch?v=${message.videoId}`;
         Linking.openURL(youtubeUrl).catch(err => console.error('Failed to open YouTube URL:', err));
-      } else if (message.type === 'playerError') {
-        console.error('Player Error:', message.data);
-        Alert.alert('Player Error', `Error code: ${message.data.errorCode}`);
-      } else if (message.type === 'log') { // For general logs from WebView
+      } else if (message.event === 'playerError') {
+        console.error('[HomeScreen handleMessage] Player Error:', message.data);
+        Alert.alert('Player Error', `An error occurred with the video player. Code: ${message.data?.errorCode || 'Unknown'}`);
+      } else if (message.event === 'log') { // For general logs from WebView
         console.log('WebView Log:', message.message);
+      } else {
+        console.log('[HomeScreen handleMessage] Received unhandled message type:', message.event, 'Full message:', message);
       }
-      // Add other message types as needed
-    } catch (error) {
+    } catch (error) { // Catch block for JSON.parse or other errors in handleMessage
+
       console.error('Error handling WebView message:', error);
     }
   };
