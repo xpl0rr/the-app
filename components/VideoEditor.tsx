@@ -47,13 +47,15 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
 
   // Effect to initialize/reset startTime and endTime based on props or duration changes
   useEffect(() => {
-    // When a saved clip is loaded, initialStartTime/EndTime will have values
-    // Otherwise, for a new video, they'll be undefined.
-    setStartTime(initialStartTime !== undefined ? initialStartTime : 0);
-    setEndTime(initialEndTime !== undefined ? initialEndTime : duration);
+    console.log('[VideoEditor Init Effect] Props received - duration:', duration, 'initialStartTime:', initialStartTime, 'initialEndTime:', initialEndTime);
+    const newStartTime = initialStartTime !== undefined ? initialStartTime : 0;
+    const newEndTime = initialEndTime !== undefined ? initialEndTime : duration;
+    console.log('[VideoEditor Init Effect] Setting startTime to:', newStartTime, 'Setting endTime to:', newEndTime);
+    setStartTime(newStartTime);
+    setEndTime(newEndTime);
     // Update refs for immediate use if needed by other effects
-    startTimeRef.current = initialStartTime !== undefined ? initialStartTime : 0;
-    endTimeRef.current = initialEndTime !== undefined ? initialEndTime : duration;
+    startTimeRef.current = newStartTime;
+    endTimeRef.current = newEndTime;
   }, [duration, initialStartTime, initialEndTime]);
 
   // Setup interval to check current time during playback
@@ -160,8 +162,10 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
   };
 
   const handleSliderStartChange = (value: number) => {
+    console.log('[VideoEditor handleSliderStartChange] Received value:', value, 'Current endTime:', endTime);
     // Prevent start time from exceeding end time
     const newStartTime = Math.min(value, endTime - 1);
+    console.log('[VideoEditor handleSliderStartChange] Setting startTime to:', newStartTime);
     setStartTime(newStartTime);
     
     // If currently previewing, update playback position
@@ -171,11 +175,14 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
   };
 
   const handleSliderEndChange = (value: number) => {
+    console.log('[VideoEditor handleSliderEndChange] Received value:', value, 'Current startTime:', startTime);
     // Prevent end time from being less than start time
     const newEndTime = Math.max(value, startTime + 1);
+    console.log('[VideoEditor handleSliderEndChange] Setting endTime to:', newEndTime);
     setEndTime(newEndTime);
   };
 
+  console.log('[VideoEditor Render] startTime:', startTime, 'endTime:', endTime, 'duration:', duration, 'maxSliderValue:', Math.max(1, duration));
   return (
     <ThemedView style={styles.expandedContainer}>
       {/* Title area */}
