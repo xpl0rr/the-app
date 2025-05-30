@@ -57,20 +57,6 @@ export function VideoStorage() {
   const loadSavedVideos = async () => {
     try {
       const saved = await AsyncStorage.getItem('savedClips');
-      console.log('Attempting to load clips from new key \'savedClips\':', saved);
-
-      // --- TEMPORARY: Check for old key ---
-      try {
-        const oldSaved = await AsyncStorage.getItem('savedVideos');
-        if (oldSaved) {
-          console.log('Found data under OLD key \'savedVideos\':', oldSaved);
-        } else {
-          console.log('No data found under OLD key \'savedVideos\'.');
-        }
-      } catch (e) {
-        console.error('Error checking OLD key \'savedVideos\':', e);
-      }
-      // --- END TEMPORARY ---
       if (saved) {
         setSavedVideos(JSON.parse(saved));
       }
