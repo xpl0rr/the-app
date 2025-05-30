@@ -272,10 +272,12 @@ export default function HomeScreen() {
 
   // Effect to set initialClipEndTime when videoDuration becomes available for a new video
   useEffect(() => {
+    console.log('[HomeScreen videoDuration Effect] videoDuration:', videoDuration, 'initialClipEndTime before set:', initialClipEndTime);
     // Only act if videoDuration is valid and initialClipEndTime is undefined
     // (indicating a new video load, not a clip loaded from params/storage).
     // initialClipStartTime is set to 0 in handleVideoSelect for new videos.
     if (videoDuration > 0 && initialClipEndTime === undefined) {
+      console.log('[HomeScreen videoDuration Effect] Setting initialClipEndTime to:', videoDuration);
       setInitialClipEndTime(videoDuration);
     }
   }, [videoDuration, initialClipEndTime]); // Rerun if videoDuration changes or initialClipEndTime changes (e.g. from undefined)
@@ -343,12 +345,20 @@ export default function HomeScreen() {
       console.log('WebView Message:', message); // Log the raw message
 
       if (message.type === 'playerReady') {
-        console.log('Player is ready, waiting for full details.');
-      } else if (message.type === 'playerFullyReady') {
-        console.log('Player is fully ready with details:', message);
+        console.log('[HomeScreen handleMessage] Player is ready. Message:', message);
         if (message.duration !== null && typeof message.duration === 'number') {
+          console.log('[HomeScreen handleMessage] playerReady: Setting videoDuration to', message.duration);
           setVideoDuration(message.duration);
+        } else {
+          console.log('[HomeScreen handleMessage] playerReady: Duration not found or invalid in message.');
         }
+      } else if (message.type === 'playerFullyReady') {
+        console.log('[HomeScreen handleMessage] Player is fully ready. Message:', message);
+        // If duration is also reliably sent here, could also set it, but primary capture is in playerReady
+        // if (message.duration !== null && typeof message.duration === 'number') {
+        //   console.log('[HomeScreen handleMessage] playerFullyReady: Setting videoDuration to', message.duration);
+        //   setVideoDuration(message.duration);
+        // }
         setCurrentVideoTime(0); 
         setVideoPlayerReady(true);
       } else if (message.type === 'currentTime') { // This is the correct place for currentTime
