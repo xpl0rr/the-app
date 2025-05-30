@@ -1,4 +1,3 @@
-import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -21,6 +20,7 @@ import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 // Define a type for the navigation parameters
 type RootStackParamList = {
@@ -69,6 +69,14 @@ export default function HomeScreen() {
   const [initialClipEndTime, setInitialClipEndTime] = useState<number | undefined>(undefined);
   const webViewRef = useRef<WebView>(null);
   const API_KEY = (Constants.expoConfig?.extra?.googleApiKey as string) || '';
+
+  const htmlContent = useMemo(() => {
+    if (currentVideo && currentVideo.id) {
+      // console.log('useMemo: Recalculating HTML content for WebView with videoId:', currentVideo.id.videoId, 'start:', initialClipStartTime, 'end:', initialClipEndTime);
+      return getYoutubeHTML(currentVideo.id.videoId, initialClipStartTime, initialClipEndTime);
+    }
+    return ''; // Return empty string if no current video, WebView is conditionally rendered anyway
+  }, [currentVideo?.id?.videoId, initialClipStartTime, initialClipEndTime]);
 
   useEffect(() => {
     if (currentVideo === null) {
@@ -138,12 +146,15 @@ export default function HomeScreen() {
     }
 
     const newClip = {
-      id: currentVideo.id.videoId, // Store the raw videoId string
-      title: title,
+      id: Date.now().toString(), // Unique ID for this saved clip entry
+      videoId: currentVideo.id.videoId, // The actual YouTube video ID
+      title: title, // User-defined title for this clip
       startTime: startTime,
       endTime: endTime,
-      originalVideoTitle: currentVideo.snippet.title, // Store original title for reference
-      thumbnailUrl: currentVideo.snippet.thumbnails.default.url, // Store thumbnail for display in saved list
+      isClip: true, // Mark as a clip
+      savedAt: Date.now(), // Timestamp of when it was saved
+      // originalVideoTitle: currentVideo.snippet.title, // Not in SavedVideo interface in VideoStorage
+      // thumbnailUrl: currentVideo.snippet.thumbnails.default.url, // Not in SavedVideo interface in VideoStorage
     };
 
     try {
@@ -777,8 +788,8 @@ export default function HomeScreen() {
                 ref={webViewRef}
                 key={(currentVideo && currentVideo.id) ? `${currentVideo.id.videoId}-${initialClipStartTime}-${initialClipEndTime}` : 'webview-initial'}
                 source={{ 
-                  html: getYoutubeHTML(currentVideo.id!.videoId, initialClipStartTime, initialClipEndTime), // Added non-null assertion for id as it's checked in the outer if 
-                  baseUrl: 'https://www.youtube.com'
+                  html: htmlContent, 
+                  baseUrl: 'https://www.youtube.com' 
                 }}
                 style={[styles.webview, { height: 240 }]} /* Increased height for better visibility */
                 onMessage={handleMessage}

@@ -28,6 +28,13 @@ type RootStackParamList = {
 };
 
 export function VideoStorage() {
+  // Temporary button for clearing storage - REMOVE FOR PRODUCTION
+  const renderClearButton = () => (
+    <TouchableOpacity onPress={clearAllClips} style={styles.clearButton}>
+      <ThemedText style={styles.clearButtonText}>Clear All Saved Clips (Debug)</ThemedText>
+    </TouchableOpacity>
+  );
+
   const [savedVideos, setSavedVideos] = useState<SavedVideo[]>([]);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
@@ -36,9 +43,34 @@ export function VideoStorage() {
   const [renameValue, setRenameValue] = useState('');
   const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
 
+  const clearAllClips = async () => {
+    try {
+      await AsyncStorage.removeItem('savedClips');
+      setSavedVideos([]);
+      Alert.alert('Storage Cleared', 'All saved clips have been removed.');
+    } catch (error) {
+      console.error('Error clearing saved clips:', error);
+      Alert.alert('Error', 'Could not clear saved clips.');
+    }
+  };
+
   const loadSavedVideos = async () => {
     try {
-      const saved = await AsyncStorage.getItem('savedVideos');
+      const saved = await AsyncStorage.getItem('savedClips');
+      console.log('Attempting to load clips from new key \'savedClips\':', saved);
+
+      // --- TEMPORARY: Check for old key ---
+      try {
+        const oldSaved = await AsyncStorage.getItem('savedVideos');
+        if (oldSaved) {
+          console.log('Found data under OLD key \'savedVideos\':', oldSaved);
+        } else {
+          console.log('No data found under OLD key \'savedVideos\'.');
+        }
+      } catch (e) {
+        console.error('Error checking OLD key \'savedVideos\':', e);
+      }
+      // --- END TEMPORARY ---
       if (saved) {
         setSavedVideos(JSON.parse(saved));
       }
@@ -58,7 +90,7 @@ export function VideoStorage() {
   const deleteVideo = async (id: string) => {
     try {
       const updatedVideos = savedVideos.filter(video => video.id !== id);
-      await AsyncStorage.setItem('savedVideos', JSON.stringify(updatedVideos));
+      await AsyncStorage.setItem('savedClips', JSON.stringify(updatedVideos));
       setSavedVideos(updatedVideos);
     } catch (error) {
       console.error('Error deleting video:', error);
@@ -192,7 +224,7 @@ export function VideoStorage() {
     if (!renameTargetId) return;
     try {
       const updated = savedVideos.map(v => v.id === renameTargetId ? { ...v, title: renameValue } : v);
-      await AsyncStorage.setItem('savedVideos', JSON.stringify(updated));
+      await AsyncStorage.setItem('savedClips', JSON.stringify(updated));
       setSavedVideos(updated);
     } catch (error) {
       console.error('Error renaming video:', error);
@@ -202,7 +234,21 @@ export function VideoStorage() {
   };
 
   return (
+    // Add the clear button at the top of the ScrollView or ThemedView
+    // For example, inside ThemedView but before ScrollView:
+    // <ThemedView style={styles.container}>
+    //   {renderClearButton()}
+    //   <ScrollView> ... </ScrollView>
+    // </ThemedView>
+    // Or, if you want it to scroll with content, place it inside ScrollView:
+    // <ScrollView>
+    //   {renderClearButton()}
+    //   {savedVideos.map(...)}
+    // </ScrollView>
+    // Let's place it inside ThemedView, above the ScrollView for now.
+
     <ThemedView style={styles.container}>
+      {renderClearButton()}
       <ThemedText style={styles.sectionTitle}>Saved Clips</ThemedText>
       <ScrollView style={styles.scrollView}>
         {savedVideos.map(video => (
@@ -287,6 +333,17 @@ const formatTime = (seconds: number) => {
 };
 
 const styles = StyleSheet.create({
+  clearButton: {
+    backgroundColor: 'red',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  clearButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
   container: {
     flex: 1,
     padding: 16,
