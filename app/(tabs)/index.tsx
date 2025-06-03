@@ -104,7 +104,7 @@ export default function HomeScreen() {
             body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; overflow: hidden; }
             .video-container { position: relative; width: 100%; height: 100%; }
             iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; pointer-events: auto !important; }
-            #message_container_test { position: absolute; top: 10px; left: 10px; color: green; font-size: 18px; z-index: 9999; }
+            /* Removed debug message display */
             /* Stronger CSS to force controls visibility */
             .ytp-chrome-bottom { opacity: 1 !important; visibility: visible !important; display: block !important; }
             .ytp-gradient-bottom, .ytp-chrome-controls { opacity: 1 !important; visibility: visible !important; display: block !important; }
@@ -113,7 +113,6 @@ export default function HomeScreen() {
     </head>
     <body>
         <div id="player" class="video-container"></div>
-        <div id="message_container_test">Initial Script Test OK</div>
         <script>
             // Create global window functions first to avoid the "is not a function" errors
             window.playVideo = function() {
@@ -276,7 +275,7 @@ export default function HomeScreen() {
       return getYoutubeHTML(currentVideo.id.videoId, initialClipStartTime, initialClipEndTime);
     }
     return ''; // Return empty string if no current video, WebView is conditionally rendered anyway
-  }, [videoDuration, isClipLoadingFromRouteNav, initialClipStartTime]); // initialClipEndTime removed from deps
+  }, [videoDuration, isClipLoadingFromRouteNav, initialClipStartTime, initialClipEndTime]); // Added initialClipEndTime back to ensure end times are preserved
 
   useEffect(() => {
     if (!currentVideo) {
@@ -399,7 +398,7 @@ export default function HomeScreen() {
       setVideoPlayerReady(false);
       setCurrentVideoTime(initialClipStartTime || 0); // Reset to start of clip or 0
     }
-  }, [videoDuration, isClipLoadingFromRouteNav, initialClipStartTime]); // initialClipEndTime removed from deps // Rerun if videoDuration changes or initialClipEndTime changes (e.g. from undefined)
+  }, [videoDuration, isClipLoadingFromRouteNav, initialClipStartTime, initialClipEndTime]); // Added initialClipEndTime back to dependency array to fix end time saving issues
 
   // Save clip to AsyncStorage
   const saveClip = async (title: string, startTime: number, endTime: number) => {
