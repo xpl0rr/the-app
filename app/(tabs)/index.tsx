@@ -197,6 +197,12 @@ export default function HomeScreen() {
             // Initial message to confirm script is running
             window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'initialScriptTest', message: 'Script loaded and running.' }));
 
+            // Periodically send currentTime to React Native
+            setInterval(() => {
+              const currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
+              console.log('[WebView getYoutubeHTML] Posting currentTime:', currentTime); // Verbose, enable if needed
+              window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'currentTime', time: currentTime }));
+            }, 250); // Send updates every 250ms
         </script>
     </body>
     </html>
@@ -272,15 +278,33 @@ export default function HomeScreen() {
 
   // Effect to set initialClipEndTime when videoDuration becomes available for a new video
   useEffect(() => {
-    console.log('[HomeScreen videoDuration Effect] videoDuration:', videoDuration, 'initialClipEndTime before set:', initialClipEndTime);
-    // Only act if videoDuration is valid and initialClipEndTime is undefined
-    // (indicating a new video load, not a clip loaded from params/storage).
-    // initialClipStartTime is set to 0 in handleVideoSelect for new videos.
-    if (videoDuration > 0 && initialClipEndTime === undefined) {
-      console.log('[HomeScreen videoDuration Effect] Setting initialClipEndTime to:', videoDuration);
+    // Check if a clip is being loaded via route params (e.g., videoId and startTime are present)
+    const isLoadingClipFromRoute = !!(route.params?.videoId && typeof route.params?.startTime === 'number');
+    console.log(`[HomeScreen videoDuration Effect] videoDuration: ${videoDuration} initialClipEndTime before set: ${initialClipEndTime}, isLoadingClipFromRoute: ${isLoadingClipFromRoute}`);
+
+    let changedEndTime = false;
+    // Set initialClipEndTime only if videoDuration is valid AND we are NOT loading a clip from route params
+    // AND initialClipEndTime is currently undefined (typical for a fresh video selection).
+    if (videoDuration > 0 && initialClipEndTime === undefined && !isLoadingClipFromRoute) {
+      console.log(`[HomeScreen videoDuration Effect] Setting initialClipEndTime for new video to: ${videoDuration}`);
       setInitialClipEndTime(videoDuration);
+      changedEndTime = true;
+    } 
+    // This condition handles if videoDuration changes for an already selected new video (not a clip from route).
+    // For example, if the player initially reports a slightly different duration.
+    else if (videoDuration > 0 && initialClipEndTime !== undefined && videoDuration !== initialClipEndTime && !isLoadingClipFromRoute) {
+      console.log(`[HomeScreen videoDuration Effect] videoDuration changed for a new video. Updating initialClipEndTime from ${initialClipEndTime} to ${videoDuration}`);
+      setInitialClipEndTime(videoDuration);
+      changedEndTime = true;
     }
-  }, [videoDuration, initialClipEndTime]); // Rerun if videoDuration changes or initialClipEndTime changes (e.g. from undefined)
+
+    if (changedEndTime) {
+      // If initialClipEndTime was changed, the WebView key will likely change, so player is no longer ready.
+      console.log('[HomeScreen videoDuration Effect] initialClipEndTime changed, resetting videoPlayerReady to false and currentVideoTime to 0.');
+      setVideoPlayerReady(false);
+      setCurrentVideoTime(0);
+    }
+  }, [videoDuration, initialClipEndTime, route.params?.videoId, route.params?.startTime]); // Rerun if videoDuration changes or initialClipEndTime changes (e.g. from undefined)
 
   // Save clip to AsyncStorage
   const saveClip = async (title: string, startTime: number, endTime: number) => {
@@ -372,7 +396,14 @@ export default function HomeScreen() {
         // You might want to add logic here, e.g., replay, go to next, etc.
       } else if (message.event === 'playerStateChange') {
         console.log('[HomeScreen handleMessage] Player state changed:', message.state, 'at time:', message.currentTime);
-        // You can react to different player states (playing, paused, ended, etc.)
+        if (message.currentTime !== null && typeof message.currentTime === 'number') {
+          setCurrentVideoTime(message.currentTime);
+        }
+        // YT.PlayerState.ENDED is 0, YT.PlayerState.PLAYING is 1, YT.PlayerState.PAUSED is 2, etc.
+        if (message.state === 0 && message.clipLooped) { // 0 corresponds to YT.PlayerState.ENDED
+          console.log('[HomeScreen handleMessage] Clip looped in WebView');
+          // Potentially track loop count or other actions here if needed
+        }
       } else if (message.event === 'openInYouTube') {
         const youtubeUrl = `https://www.youtube.com/watch?v=${message.videoId}`;
         Linking.openURL(youtubeUrl).catch(err => console.error('Failed to open YouTube URL:', err));
