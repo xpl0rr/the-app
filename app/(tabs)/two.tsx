@@ -6,8 +6,12 @@ import { VideoStorage } from '../../components/VideoStorage';
 export default function SavedClipsScreen() {
   return (
     <ThemedView style={styles.container}>
-      <VideoStorage />
-      <SessionTimer variant="practice" />
+      <ThemedView style={styles.storageContainer}>
+        <VideoStorage />
+      </ThemedView>
+      <ThemedView style={styles.timerContainer}>
+        <SessionTimer variant="practice" />
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -16,5 +20,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
+    position: 'relative',
+  },
+  storageContainer: {
+    flex: 1,
+    paddingBottom: 65, // Make room for the timer at the bottom
+  },
+  timerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(40, 40, 40, 0.9)', // Semi-transparent background
+    zIndex: 10,
+    paddingBottom: 32, // Add padding for bottom safe area
+    paddingTop: 4,
   },
 }); 
