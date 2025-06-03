@@ -23,6 +23,8 @@ type RootStackParamList = {
     title: string;
     startTime?: number;
     endTime?: number;
+    thumbnailUrl?: string; // Added for clip navigation
+    description?: string; // Added for clip navigation
   };
   // Add other routes here if your app has more screens in this navigator
 };
@@ -95,11 +97,14 @@ export function VideoStorage() {
   };
 
   const playVideo = (video: SavedVideo) => {
+    // Add placeholder values for thumbnailUrl and description
     navigation.navigate('index', {
       videoId: video.videoId,
       title: video.title,
       startTime: video.startTime,
       endTime: video.endTime,
+      thumbnailUrl: 'https://i.ytimg.com/vi/' + video.videoId + '/default.jpg', // YouTube thumbnail URL format
+      description: video.title, // Use title as description since we don't store descriptions
     });
   };
 

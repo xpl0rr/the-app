@@ -103,20 +103,63 @@ export default function HomeScreen() {
         <style>
             body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; overflow: hidden; }
             .video-container { position: relative; width: 100%; height: 100%; }
-            iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+            iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; pointer-events: auto !important; }
             #message_container_test { position: absolute; top: 10px; left: 10px; color: green; font-size: 18px; z-index: 9999; }
+            /* Stronger CSS to force controls visibility */
+            .ytp-chrome-bottom { opacity: 1 !important; visibility: visible !important; display: block !important; }
+            .ytp-gradient-bottom, .ytp-chrome-controls { opacity: 1 !important; visibility: visible !important; display: block !important; }
+            .ytp-large-play-button { opacity: 1 !important; visibility: visible !important; display: block !important; }
         </style>
     </head>
     <body>
         <div id="player" class="video-container"></div>
         <div id="message_container_test">Initial Script Test OK</div>
         <script>
+            // Create global window functions first to avoid the "is not a function" errors
+            window.playVideo = function() {
+                try {
+                    if (window.player && window.player.playVideo) window.player.playVideo();
+                    else console.log("Player not ready for playVideo");
+                    return true;
+                } catch (e) { console.error('Error in playVideo:', e); return true; }
+            };
+            
+            window.pauseVideo = function() {
+                try {
+                    if (window.player && window.player.pauseVideo) window.player.pauseVideo();
+                    else console.log("Player not ready for pauseVideo");
+                    return true;
+                } catch (e) { console.error('Error in pauseVideo:', e); return true; }
+            };
+            
+            window.seekTo = function(seconds, allowSeekAhead) {
+                try {
+                    if (window.player && window.player.seekTo) window.player.seekTo(seconds, allowSeekAhead);
+                    else console.log("Player not ready for seekTo");
+                    return true;
+                } catch (e) { console.error('Error in seekTo:', e); return true; }
+            };
+            
+            window.getCurrentTime = function() {
+                try {
+                    if (window.player && window.player.getCurrentTime) return window.player.getCurrentTime();
+                    return 0;
+                } catch (e) { console.error('Error in getCurrentTime:', e); return 0; }
+            };
+            
+            window.getDuration = function() {
+                try {
+                    if (window.player && window.player.getDuration) return window.player.getDuration();
+                    return 0;
+                } catch (e) { console.error('Error in getDuration:', e); return 0; }
+            };
+
             var tag = document.createElement('script');
             tag.src = "https://www.youtube.com/iframe_api";
             var firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-            var player;
+            window.player = null;
             var playerReady = false;
             var initialStartSeconds = ${startSeconds !== undefined ? startSeconds : 'null'};
             var initialEndSeconds = ${endSeconds !== undefined ? endSeconds : 'null'};
@@ -124,7 +167,7 @@ export default function HomeScreen() {
 
             function onYouTubeIframeAPIReady() {
                 console.log('YT API Ready. VideoId:', '${videoId}');
-                player = new YT.Player('player', {
+                window.player = new YT.Player('player', {
                     height: '100%',
                     width: '100%',
                     videoId: '${videoId}',
@@ -139,26 +182,63 @@ export default function HomeScreen() {
 
             function onPlayerReady(event) {
                 console.log('Player Ready. Autoplaying...');
-                // event.target.playVideo(); // Autoplay is set in playerVars
                 playerReady = true;
-                window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerReady', duration: player.getDuration() }));
-                window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerFullyReady' }));
+                
+                // Make sure the controls are visible - enhanced version
+                if (window.player && window.player.getIframe) {
+                    var iframe = window.player.getIframe();
+                    if (iframe) {
+                        iframe.style.pointerEvents = "auto"; // Make sure interactions work
+                    }
+                }
+                
+                // Force UI buttons to be visible with custom CSS injection
+                try {
+                    var forceCSSControls = document.createElement('style');
+                    forceCSSControls.textContent = `
+                        .ytp-chrome-bottom, .ytp-chrome-controls { opacity: 1 !important; visibility: visible !important; display: block !important; }
+                        .ytp-gradient-bottom { opacity: 1 !important; visibility: visible !important; display: block !important; }
+                        .html5-video-player .ytp-large-play-button { opacity: 1 !important; visibility: visible !important; display: block !important; }
+                    `;
+                    document.head.appendChild(forceCSSControls);
+                    console.log('Injected force controls CSS');
+                } catch (e) {
+                    console.error('Error injecting control visibility CSS:', e);
+                }
+                
+                window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerReady', duration: window.player.getDuration() }));
+                
+                // Ensure controls are actually visible before reporting ready
+                setTimeout(() => {
+                    // Try to force show controls again
+                    if (window.player && window.player.getIframe) {
+                        try {
+                            // Some players need extra help showing controls
+                            var playerElement = window.player.getIframe().contentDocument?.querySelector('.html5-video-player');
+                            if (playerElement) playerElement.classList.remove('ytp-autohide');
+                        } catch (e) { console.error('Error forcing controls visibility in timeout:', e); }
+                    }
+                    window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerFullyReady' }));
+                }, 1000); // Increased delay to ensure the player is fully initialized
+                
                 document.getElementById('message_container_test').style.color = 'blue';
                 document.getElementById('message_container_test').innerText = 'Player Ready!';
+                return true;
             }
 
             function onPlayerStateChange(event) {
                 var state = event.data;
-                var currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
+                var currentTime = window.player && window.player.getCurrentTime ? window.player.getCurrentTime() : 0;
                 window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerStateChange', state: state, currentTime: currentTime }));
                 console.log('Player state changed:', state, 'isClip:', isClip, 'start:', initialStartSeconds, 'end:', initialEndSeconds);
 
                 if (state === YT.PlayerState.ENDED && isClip && initialStartSeconds !== null) {
                     console.log('Clip ended, seeking to start:', initialStartSeconds);
-                    player.seekTo(initialStartSeconds, true);
-                    player.playVideo(); 
+                    window.player.seekTo(initialStartSeconds, true);
+                    window.player.playVideo(); 
                     window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'clipLooped' }));
                 }
+                return true;
             }
 
             function onPlayerError(event) {
@@ -166,35 +246,7 @@ export default function HomeScreen() {
                 window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerError', errorCode: event.data }));
                 document.getElementById('message_container_test').style.color = 'red';
                 document.getElementById('message_container_test').innerText = 'Player Error: ' + event.data;
-            }
-
-            // Functions to be called from React Native
-            function playVideo() {
-                try {
-                    if (player && player.playVideo) player.playVideo();
-                } catch (e) { console.error('Error in playVideo:', e); }
-            }
-            function pauseVideo() {
-                try {
-                    if (player && player.pauseVideo) player.pauseVideo();
-                } catch (e) { console.error('Error in pauseVideo:', e); }
-            }
-            function seekTo(seconds, allowSeekAhead) {
-                try {
-                    if (player && player.seekTo) player.seekTo(seconds, allowSeekAhead);
-                } catch (e) { console.error('Error in seekTo:', e); }
-            }
-            function getCurrentTime() {
-                try {
-                    if (player && player.getCurrentTime) return player.getCurrentTime();
-                } catch (e) { console.error('Error in getCurrentTime:', e); }
-                return 0;
-            }
-            function getDuration() {
-                try {
-                    if (player && player.getDuration) return player.getDuration();
-                } catch (e) { console.error('Error in getDuration:', e); }
-                return 0;
+                return true;
             }
 
             // Initial message to confirm script is running
@@ -202,10 +254,18 @@ export default function HomeScreen() {
 
             // Periodically send currentTime to React Native
             setInterval(() => {
-              const currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
-              console.log('[WebView getYoutubeHTML] Posting currentTime:', currentTime); // Verbose, enable if needed
-              window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'currentTime', time: currentTime }));
+              try {
+                if (window.player && window.player.getCurrentTime) {
+                  const currentTime = window.player.getCurrentTime();
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'currentTime', time: currentTime }));
+                }
+              } catch (e) {
+                console.error('Error sending currentTime:', e);
+              }
             }, 250); // Send updates every 250ms
+            
+            // Return true to fix injectedJavaScript errors
+            true;
         </script>
     </body>
     </html>
@@ -791,6 +851,10 @@ export default function HomeScreen() {
                 /* Ensure the WebView responds to all events */
                 allowsFullscreenVideo={false}
                 onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+                androidLayerType="hardware"
+                originWhitelist={['*']}
+                mixedContentMode="compatibility"
+                injectedJavaScriptBeforeContentLoaded="window.isWebViewBridgeReady = true; true;"
               />
             </View>
             
@@ -864,7 +928,7 @@ export default function HomeScreen() {
 
       {/* Content Area for Search Results */}
       <View style={styles.contentContainer}>
-        {loading ? (
+        {isSearching ? (
           <ActivityIndicator size="large" color="#0000ff" />
         ) : (
           <FlatList
