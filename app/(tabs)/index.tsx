@@ -249,17 +249,28 @@ export default function HomeScreen() {
             // Initial message to confirm script is running
             window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'initialScriptTest', message: 'Script loaded and running.' }));
 
-            // Periodically send currentTime to React Native
+            // Periodically send currentTime to React Native and check for clip looping
             setInterval(() => {
               try {
                 if (window.player && window.player.getCurrentTime) {
                   const currentTime = window.player.getCurrentTime();
                   window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'currentTime', time: currentTime }));
+                  
+                  // Check if we need to loop the clip
+                  if (isClip && initialEndSeconds !== null && initialStartSeconds !== null) {
+                    // Add a small buffer (0.2s) to ensure we don't miss the loop point
+                    if (currentTime >= initialEndSeconds - 0.2) {
+                      console.log('Clip end time reached, looping to start:', initialStartSeconds);
+                      window.player.seekTo(initialStartSeconds, true);
+                      window.player.playVideo();
+                      window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'clipLooped' }));
+                    }
+                  }
                 }
               } catch (e) {
-                console.error('Error sending currentTime:', e);
+                console.error('Error in time update interval:', e);
               }
-            }, 250); // Send updates every 250ms
+            }, 250); // Check every 250ms
             
             // Return true to fix injectedJavaScript errors
             true;
@@ -867,6 +878,9 @@ export default function HomeScreen() {
                     saveClip(title, startTime, endTime).then(() => {
                       setCurrentVideo(null); // Reset after saving
                     });
+                  }}
+                  onClose={() => {
+                    setCurrentVideo(null); // Close editor without saving
                   }}
                   webViewRef={webViewRef}
                   videoPlayerReady={videoPlayerReady}

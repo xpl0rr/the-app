@@ -12,13 +12,14 @@ interface VideoEditorProps {
   duration: number;
   currentTime?: number; // Added currentTime prop
   onSave: (title: string, startTime: number, endTime: number) => void;
+  onClose: () => void; // Add onClose prop to handle closing without saving
   webViewRef: any; // Consider more specific type if possible, e.g., RefObject<WebView>
   videoPlayerReady: boolean;
   initialStartTime?: number;
   initialEndTime?: number;
 }
 
-export function VideoEditor({ videoId, title, duration, currentTime: propCurrentTime, onSave, webViewRef, videoPlayerReady, initialStartTime, initialEndTime }: VideoEditorProps): React.ReactElement {
+export function VideoEditor({ videoId, title, duration, currentTime: propCurrentTime, onSave, onClose, webViewRef, videoPlayerReady, initialStartTime, initialEndTime }: VideoEditorProps): React.ReactElement {
   // State declarations
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(duration);
@@ -190,7 +191,7 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
         <ThemedText style={styles.videoTitle}>{title}</ThemedText>
         <TouchableOpacity 
           style={styles.titleCloseButton}
-          onPress={() => handleSave(true)} // Assume close saves current clip settings
+          onPress={onClose} // Now properly closes without saving
         >
           <Ionicons name="close" size={18} color="#fff" />
         </TouchableOpacity>
