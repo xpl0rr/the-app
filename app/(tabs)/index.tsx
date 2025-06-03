@@ -477,6 +477,30 @@ export default function HomeScreen() {
       setInitialClipStartTime(undefined); // Reset for non-clipped video
       setInitialClipEndTime(undefined);   // Reset for non-clipped video
       setVideoPlayerReady(false);
+      setVideoDuration(0); // Reset duration for new video
+      setCurrentVideoTime(0); // Reset current time for new video
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
+          searchQuery
+        )}&type=video&key=${API_KEY}`
+      );
+      const data = await response.json();
+      setVideos(data.items || []);
+    } catch (error) {
+      console.error('Error searching YouTube:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Add a direct HTML iframe approach for more reliable YouTube embedding
+  const getYouTubeIframeHTML = (videoId: string) => `
+    <iframe 
       id="ytplayer" 
       width="100%" 
       height="100%" 
