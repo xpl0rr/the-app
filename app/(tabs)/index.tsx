@@ -195,11 +195,9 @@ export default function HomeScreen() {
                 // Force UI buttons to be visible with custom CSS injection
                 try {
                     var forceCSSControls = document.createElement('style');
-                    forceCSSControls.textContent = `
-                        .ytp-chrome-bottom, .ytp-chrome-controls { opacity: 1 !important; visibility: visible !important; display: block !important; }
-                        .ytp-gradient-bottom { opacity: 1 !important; visibility: visible !important; display: block !important; }
-                        .html5-video-player .ytp-large-play-button { opacity: 1 !important; visibility: visible !important; display: block !important; }
-                    `;
+                    forceCSSControls.textContent = ".ytp-chrome-bottom, .ytp-chrome-controls { opacity: 1 !important; visibility: visible !important; display: block !important; }" +
+                        ".ytp-gradient-bottom { opacity: 1 !important; visibility: visible !important; display: block !important; }" +
+                        ".html5-video-player .ytp-large-play-button { opacity: 1 !important; visibility: visible !important; display: block !important; }";
                     document.head.appendChild(forceCSSControls);
                     console.log('Injected force controls CSS');
                 } catch (e) {
