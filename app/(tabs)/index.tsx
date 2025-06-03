@@ -17,7 +17,7 @@ import { SessionTimer } from '../../components/SessionTimer';
 import { VideoEditor } from '../../components/VideoEditor';
 import WebView from 'react-native-webview';
 import Constants from 'expo-constants';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -745,6 +745,25 @@ export default function HomeScreen() {
       marginTop: 0,
       alignSelf: 'flex-start',
     },
+    airPlayButtonContainer: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      zIndex: 1,
+    },
+    airPlayButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      padding: 8,
+      borderRadius: 8,
+    },
+    airPlayText: {
+      fontSize: 14,
+      color: 'white',
+      marginLeft: 8,
+    },
   });
 
   // Styles for the search container
@@ -841,6 +860,37 @@ export default function HomeScreen() {
           <SafeAreaView style={{ flex: 1, width: '100%' }}>
             {/* Video Player Section - Add top padding to ensure visibility */}
             <View style={[styles.videoWrapper, { paddingTop: 24 }]}>
+              <View style={styles.airPlayButtonContainer}>
+                <TouchableOpacity
+                  style={styles.airPlayButton}
+                  onPress={() => {
+                    // This triggers iOS to show the AirPlay device selection menu
+                    if (webViewRef.current) {
+                      webViewRef.current.injectJavaScript(`
+                        if (window.player) {
+                          // Use the WebKit AirPlay API
+                          window.ReactNativeWebView.postMessage(JSON.stringify({ 
+                            event: 'airPlayRequested' 
+                          }));
+                          // This will only work if called in response to a user action
+                          try {
+                            // This triggers the native iOS AirPlay menu
+                            const videoElement = document.querySelector('video');
+                            if (videoElement) {
+                              videoElement.webkitShowPlaybackTargetPicker();
+                            }
+                          } catch (e) {
+                            console.error('AirPlay error:', e);
+                          }
+                        }
+                      `)
+                    }
+                  }}
+                >
+                  <MaterialIcons name="airplay" size={24} color="white" />
+                  <ThemedText style={styles.airPlayText}>AirPlay</ThemedText>
+                </TouchableOpacity>
+              </View>
               <WebView
                 ref={webViewRef}
                 key={(currentVideo && currentVideo.id) ? `${currentVideo.id.videoId}-${initialClipStartTime}-${initialClipEndTime}` : 'webview-initial'}
@@ -858,6 +908,7 @@ export default function HomeScreen() {
                 bounces={false}
                 /* Ensure the WebView responds to all events */
                 allowsFullscreenVideo={false}
+                allowsAirPlayForMediaPlayback={true}
                 onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
                 androidLayerType="hardware"
                 originWhitelist={['*']}
