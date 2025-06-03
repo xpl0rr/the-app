@@ -241,7 +241,11 @@ export function VideoStorage() {
     <ThemedView style={styles.container}>
       {renderClearButton()}
       <ThemedText style={styles.sectionTitle}>Saved Clips</ThemedText>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={true}
+      >
         {savedVideos.map(video => (
           <ThemedView key={video.id} style={styles.videoItem}>
             <TouchableOpacity 
@@ -339,18 +343,23 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: '#FFFFFF',
+    paddingBottom: 0, // Remove bottom padding to give more space to ScrollView
   },
   sectionTitle: {
     fontSize: 24,
     fontWeight: 'normal',
     textAlign: 'center',
-    marginTop: 24,
-    marginBottom: 24,
+    marginTop: 8, // Reduced margin to give more space to scrollable content
+    marginBottom: 12, // Reduced margin to give more space to scrollable content
     color: '#000000',
   },
   scrollView: {
     flex: 1,
     paddingHorizontal: 8,
+  },
+  scrollViewContent: {
+    paddingBottom: 24, // Add padding at the bottom to ensure the last item is visible
+    flexGrow: 1, // Allow content to grow but also be scrollable
   },
   videoItem: {
     flexDirection: 'row',
