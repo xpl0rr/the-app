@@ -11,6 +11,7 @@ import {
   ViewStyle,
   Linking,
   Alert,
+  Platform
 } from 'react-native';
 import { ThemedText } from '../../components/ThemedText';
 import { SessionTimer } from '../../components/SessionTimer';
@@ -860,37 +861,51 @@ export default function HomeScreen() {
           <SafeAreaView style={{ flex: 1, width: '100%' }}>
             {/* Video Player Section - Add top padding to ensure visibility */}
             <View style={[styles.videoWrapper, { paddingTop: 24 }]}>
-              <View style={styles.airPlayButtonContainer}>
+              {Platform.OS === 'ios' && (
                 <TouchableOpacity
-                  style={styles.airPlayButton}
+                  style={styles.airPlayButtonContainer}
                   onPress={() => {
-                    // This triggers iOS to show the AirPlay device selection menu
+                    // To handle AirPlay in iOS, we need to manipulate the WebView with explicit AirPlay commands
                     if (webViewRef.current) {
+                      // First, set allowsInlineMediaPlayback and allowsAirPlayForMediaPlayback again to ensure they're enabled
+                      // Then inject JavaScript that attempts to trigger AirPlay using iOS' built-in AirPlay controls
                       webViewRef.current.injectJavaScript(`
-                        if (window.player) {
-                          // Use the WebKit AirPlay API
-                          window.ReactNativeWebView.postMessage(JSON.stringify({ 
-                            event: 'airPlayRequested' 
-                          }));
-                          // This will only work if called in response to a user action
-                          try {
-                            // This triggers the native iOS AirPlay menu
-                            const videoElement = document.querySelector('video');
-                            if (videoElement) {
-                              videoElement.webkitShowPlaybackTargetPicker();
+                        // Force video element to have AirPlay enabled
+                        try {
+                          const videos = document.getElementsByTagName('video');
+                          if (videos.length > 0) {
+                            // iOS Safari specific attribute
+                            videos[0].setAttribute('x-webkit-airplay', 'allow');
+                            
+                            // Try to show system AirPlay UI
+                            if (videos[0].webkitShowPlaybackTargetPicker) {
+                              videos[0].webkitShowPlaybackTargetPicker();
+                              window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'airPlayPickerShown' }));
+                            } else {
+                              window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'airPlayError', message: 'AirPlay API not available' }));
                             }
-                          } catch (e) {
-                            console.error('AirPlay error:', e);
+                          } else {
+                            window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'airPlayError', message: 'No video element found' }));
                           }
+                        } catch (e) {
+                          window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'airPlayError', message: e.toString() }));
                         }
-                      `)
+                        true;
+                      `);
+                    } else {
+                      Alert.alert(
+                        'AirPlay Error', 
+                        'Video player is not ready yet. Please try again when the video is playing.'
+                      );
                     }
                   }}
                 >
-                  <MaterialIcons name="airplay" size={24} color="white" />
-                  <ThemedText style={styles.airPlayText}>AirPlay</ThemedText>
+                  <View style={styles.airPlayButton}>
+                    <MaterialIcons name="airplay" size={24} color="white" />
+                    <ThemedText style={styles.airPlayText}>AirPlay</ThemedText>
+                  </View>
                 </TouchableOpacity>
-              </View>
+              )}
               <WebView
                 ref={webViewRef}
                 key={(currentVideo && currentVideo.id) ? `${currentVideo.id.videoId}-${initialClipStartTime}-${initialClipEndTime}` : 'webview-initial'}
