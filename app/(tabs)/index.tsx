@@ -29,6 +29,8 @@ type RootStackParamList = {
     title?: string;
     startTime?: number;
     endTime?: number;
+    thumbnailUrl?: string; // Added for clip navigation
+    description?: string; // Added for clip navigation
   };
   // Add other routes here if your app has more screens in this navigator
 };
@@ -59,7 +61,8 @@ export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [searchQuery, setSearchQuery] = useState('');
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [isClipLoadingFromRouteNav, setIsClipLoadingFromRouteNav] = useState<boolean>(false);
   const [currentVideo, setCurrentVideo] = useState<VideoItem | null>(null);
   const [currentVideoTitle, setCurrentVideoTitle] = useState('');
   const [videoDuration, setVideoDuration] = useState<number>(0);
@@ -215,7 +218,22 @@ export default function HomeScreen() {
       return getYoutubeHTML(currentVideo.id.videoId, initialClipStartTime, initialClipEndTime);
     }
     return ''; // Return empty string if no current video, WebView is conditionally rendered anyway
-  }, [currentVideo?.id?.videoId, initialClipStartTime, initialClipEndTime]);
+  }, [videoDuration, isClipLoadingFromRouteNav, initialClipStartTime]); // initialClipEndTime removed from deps
+
+  useEffect(() => {
+    if (!currentVideo) {
+      // This means we are leaving the video editor view (e.g. after saving or closing)
+      console.log("[HomeScreen currentVideo Effect] currentVideo is null. Resetting isClipLoadingFromRouteNav, initialClipStartTime, initialClipEndTime.");
+      if (isClipLoadingFromRouteNav) {
+        setIsClipLoadingFromRouteNav(false); // Reset if it was true
+      }
+      // Reset these for the next *new* video selection, ensuring they don't carry over from a clip
+      setInitialClipStartTime(0); 
+      setInitialClipEndTime(undefined);
+      // setCurrentVideoTime(0); // currentVideoTime is managed by other effects
+      // setVideoPlayerReady(false); // This should be handled by WebView key changes or other logic
+    }
+  }, [currentVideo, isClipLoadingFromRouteNav]); // Added isClipLoadingFromRouteNav to deps
 
   useEffect(() => {
     if (currentVideo === null) {
@@ -247,22 +265,34 @@ export default function HomeScreen() {
 
   // Effect to handle incoming navigation parameters for saved clips
   useEffect(() => {
-    const params = route.params;
-    if (params && params.videoId) {
+    // Ensure all expected params are present for a clip navigation
+    // Ensure all expected params are present for a clip navigation
+    if (route.params?.videoId && 
+        typeof route.params?.startTime === 'number' && 
+        typeof route.params?.endTime === 'number' &&
+        route.params?.title && 
+        route.params?.thumbnailUrl &&
+        typeof route.params?.description === 'string') { // Added check for description
+
+      const { videoId, title, startTime, endTime, thumbnailUrl, description } = route.params;
+
+      console.log(`[HomeScreen Route Effect] Navigating to clip: videoId=${videoId}, title=${title}, startTime=${startTime}, endTime=${endTime}, thumb=${thumbnailUrl}, desc=${description}`);
+      
       const navigatedClipData: VideoItem = {
-        id: { videoId: params.videoId },
+        id: { videoId: videoId },
         snippet: {
-          title: params.title || 'Video',
-          description: '', // Placeholder
-          thumbnails: { default: { url: '' } } // Placeholder
-        }
+          title: title,
+          description: description || '', // Added description
+          thumbnails: { default: { url: thumbnailUrl } },
+        },
       };
       setCurrentVideo(navigatedClipData);
-      setCurrentVideoTitle(params.title || 'Video');
-      setInitialClipStartTime(params.startTime);
-      setInitialClipEndTime(params.endTime);
-      setCurrentVideoTime(params.startTime || 0);
+      setCurrentVideoTitle(title || 'Video');
+      setInitialClipStartTime(startTime);
+      setInitialClipEndTime(endTime); // Set from params
+      setCurrentVideoTime(startTime);
       setVideoPlayerReady(false); // Ensure player re-initializes
+      setIsClipLoadingFromRouteNav(true); // Indicate clip is being loaded from route
       setSearchQuery(''); // Clear search
       setVideos([]);    // Clear search results
 
@@ -272,39 +302,46 @@ export default function HomeScreen() {
         title: undefined,
         startTime: undefined,
         endTime: undefined,
+        thumbnailUrl: undefined,
+        description: undefined, // Clear description
       });
+    } else if (route.params?.videoId && 
+               (route.params.startTime === undefined || 
+                route.params.endTime === undefined || 
+                route.params.title === undefined || 
+                route.params.thumbnailUrl === undefined ||
+                route.params.description === undefined)) { // Added description check
+      // This case means some clip parameters were missing, which shouldn't happen for a valid clip navigation.
+      // It might be a regular video selection if only videoId is present.
+      // For safety, ensure isClipLoadingFromRouteNav is false if it's not a complete clip load.
+      console.log(`[HomeScreen Route Effect] videoId '${route.params.videoId}' present but not all clip params. Assuming not a clip navigation from saved.`);
+      // If we previously thought it was a clip nav but params are now incomplete, reset.
+      if (isClipLoadingFromRouteNav) setIsClipLoadingFromRouteNav(false);
     }
-  }, [route.params?.videoId, navigation]); // Depend on videoId from params
+  }, [route.params, navigation, isClipLoadingFromRouteNav]); // Added isClipLoadingFromRouteNav to deps for the reset case
 
   // Effect to set initialClipEndTime when videoDuration becomes available for a new video
   useEffect(() => {
-    // Check if a clip is being loaded via route params (e.g., videoId and startTime are present)
-    const isLoadingClipFromRoute = !!(route.params?.videoId && typeof route.params?.startTime === 'number');
-    console.log(`[HomeScreen videoDuration Effect] videoDuration: ${videoDuration} initialClipEndTime before set: ${initialClipEndTime}, isLoadingClipFromRoute: ${isLoadingClipFromRoute}`);
+
+    console.log(`[HomeScreen videoDuration Effect] videoDuration: ${videoDuration}, initialClipEndTime: ${initialClipEndTime}, isClipLoadingFromRouteNav: ${isClipLoadingFromRouteNav}, initialClipStartTime: ${initialClipStartTime}`);
 
     let changedEndTime = false;
-    // Set initialClipEndTime only if videoDuration is valid AND we are NOT loading a clip from route params
-    // AND initialClipEndTime is currently undefined (typical for a fresh video selection).
-    if (videoDuration > 0 && initialClipEndTime === undefined && !isLoadingClipFromRoute) {
+    if (videoDuration > 0 && initialClipEndTime === undefined && !isClipLoadingFromRouteNav) {
       console.log(`[HomeScreen videoDuration Effect] Setting initialClipEndTime for new video to: ${videoDuration}`);
       setInitialClipEndTime(videoDuration);
       changedEndTime = true;
-    } 
-    // This condition handles if videoDuration changes for an already selected new video (not a clip from route).
-    // For example, if the player initially reports a slightly different duration.
-    else if (videoDuration > 0 && initialClipEndTime !== undefined && videoDuration !== initialClipEndTime && !isLoadingClipFromRoute) {
+    } else if (videoDuration > 0 && initialClipEndTime !== undefined && videoDuration !== initialClipEndTime && !isClipLoadingFromRouteNav) {
       console.log(`[HomeScreen videoDuration Effect] videoDuration changed for a new video. Updating initialClipEndTime from ${initialClipEndTime} to ${videoDuration}`);
       setInitialClipEndTime(videoDuration);
       changedEndTime = true;
     }
 
     if (changedEndTime) {
-      // If initialClipEndTime was changed, the WebView key will likely change, so player is no longer ready.
-      console.log('[HomeScreen videoDuration Effect] initialClipEndTime changed, resetting videoPlayerReady to false and currentVideoTime to 0.');
+      console.log(`[HomeScreen videoDuration Effect] initialClipEndTime changed, resetting videoPlayerReady to false and currentVideoTime to ${initialClipStartTime || 0}.`);
       setVideoPlayerReady(false);
-      setCurrentVideoTime(0);
+      setCurrentVideoTime(initialClipStartTime || 0); // Reset to start of clip or 0
     }
-  }, [videoDuration, initialClipEndTime, route.params?.videoId, route.params?.startTime]); // Rerun if videoDuration changes or initialClipEndTime changes (e.g. from undefined)
+  }, [videoDuration, isClipLoadingFromRouteNav, initialClipStartTime]); // initialClipEndTime removed from deps // Rerun if videoDuration changes or initialClipEndTime changes (e.g. from undefined)
 
   // Save clip to AsyncStorage
   const saveClip = async (title: string, startTime: number, endTime: number) => {
@@ -342,7 +379,6 @@ export default function HomeScreen() {
       Alert.alert('Save Error', 'Failed to save the clip. Please try again.');
     }
   };
-
 
   // Extract video ID from URL
   const extractVideoId = (url: string): string | null => {
@@ -441,30 +477,6 @@ export default function HomeScreen() {
       setInitialClipStartTime(undefined); // Reset for non-clipped video
       setInitialClipEndTime(undefined);   // Reset for non-clipped video
       setVideoPlayerReady(false);
-      setVideoDuration(0);
-      setCurrentVideoTime(0);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
-          searchQuery
-        )}&type=video&key=${API_KEY}`
-      );
-      const data = await response.json();
-      setVideos(data.items || []);
-    } catch (error) {
-      console.error('Error searching YouTube:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Add a direct HTML iframe approach for more reliable YouTube embedding
-  const getYouTubeIframeHTML = (videoId: string) => `
-    <iframe 
       id="ytplayer" 
       width="100%" 
       height="100%" 
