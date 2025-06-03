@@ -30,12 +30,15 @@ type RootStackParamList = {
 };
 
 export function VideoStorage() {
-  // Temporary button for clearing storage - REMOVE FOR PRODUCTION
-  const renderClearButton = () => (
-    <TouchableOpacity onPress={clearAllClips} style={styles.clearButton}>
-      <ThemedText style={styles.clearButtonText}>Clear All Saved Clips (Debug)</ThemedText>
-    </TouchableOpacity>
-  );
+  // Debug function to clear clips - hidden from UI
+  const clearAllClips = async () => {
+    try {
+      await AsyncStorage.removeItem('savedClips');
+      setSavedVideos([]);
+    } catch (error) {
+      console.error('Error clearing saved clips:', error);
+    }
+  };
 
   const [savedVideos, setSavedVideos] = useState<SavedVideo[]>([]);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -45,16 +48,7 @@ export function VideoStorage() {
   const [renameValue, setRenameValue] = useState('');
   const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
 
-  const clearAllClips = async () => {
-    try {
-      await AsyncStorage.removeItem('savedClips');
-      setSavedVideos([]);
-      Alert.alert('Storage Cleared', 'All saved clips have been removed.');
-    } catch (error) {
-      console.error('Error clearing saved clips:', error);
-      Alert.alert('Error', 'Could not clear saved clips.');
-    }
-  };
+
 
   const loadSavedVideos = async () => {
     try {
@@ -239,7 +233,6 @@ export function VideoStorage() {
     // Let's place it inside ThemedView, above the ScrollView for now.
 
     <ThemedView style={styles.container}>
-      {renderClearButton()}
       <ThemedText style={styles.sectionTitle}>Saved Clips</ThemedText>
       <ScrollView 
         style={styles.scrollView}
@@ -346,11 +339,11 @@ const styles = StyleSheet.create({
     paddingBottom: 0, // Remove bottom padding to give more space to ScrollView
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'normal',
     textAlign: 'center',
-    marginTop: 8, // Reduced margin to give more space to scrollable content
-    marginBottom: 12, // Reduced margin to give more space to scrollable content
+    marginTop: 10, // Reduced margin as we're now using SafeAreaView in the parent component
+    marginBottom: 16, 
     color: '#000000',
   },
   scrollView: {

@@ -1,22 +1,29 @@
 import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '../../components/ThemedView';
 import { SessionTimer } from '../../components/SessionTimer';
 import { VideoStorage } from '../../components/VideoStorage';
 
 export default function SavedClipsScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <ThemedView style={styles.storageContainer}>
-        <VideoStorage />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ThemedView style={styles.container}>
+        <ThemedView style={styles.storageContainer}>
+          <VideoStorage />
+        </ThemedView>
+        <ThemedView style={styles.timerContainer}>
+          <SessionTimer variant="practice" />
+        </ThemedView>
       </ThemedView>
-      <ThemedView style={styles.timerContainer}>
-        <SessionTimer variant="practice" />
-      </ThemedView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+  },
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
