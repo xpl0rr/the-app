@@ -76,7 +76,6 @@ export default function HomeScreen() {
 
   // Function to generate HTML for YouTube player
   const getYoutubeHTML = (videoId: string, startSeconds?: number, endSeconds?: number) => {
-    console.log('getYoutubeHTML called with videoId:', videoId, 'startSeconds:', startSeconds, 'endSeconds:', endSeconds);
     const playerVars = {
       autoplay: 1, // Auto-play the video
       rel: 0, // Don't show related videos
@@ -119,7 +118,7 @@ export default function HomeScreen() {
             window.playVideo = function() {
                 try {
                     if (window.player && window.player.playVideo) window.player.playVideo();
-                    else console.log("Player not ready for playVideo");
+                    // Player not ready for playVideo
                     return true;
                 } catch (e) { console.error('Error in playVideo:', e); return true; }
             };
@@ -127,7 +126,7 @@ export default function HomeScreen() {
             window.pauseVideo = function() {
                 try {
                     if (window.player && window.player.pauseVideo) window.player.pauseVideo();
-                    else console.log("Player not ready for pauseVideo");
+                    // Player not ready for pauseVideo
                     return true;
                 } catch (e) { console.error('Error in pauseVideo:', e); return true; }
             };
@@ -135,7 +134,7 @@ export default function HomeScreen() {
             window.seekTo = function(seconds, allowSeekAhead) {
                 try {
                     if (window.player && window.player.seekTo) window.player.seekTo(seconds, allowSeekAhead);
-                    else console.log("Player not ready for seekTo");
+                    // Player not ready for seekTo
                     return true;
                 } catch (e) { console.error('Error in seekTo:', e); return true; }
             };
@@ -166,7 +165,7 @@ export default function HomeScreen() {
             var isClip = initialEndSeconds !== null;
 
             function onYouTubeIframeAPIReady() {
-                console.log('YT API Ready. VideoId:', '${videoId}');
+                // YT API Ready
                 window.player = new YT.Player('player', {
                     height: '100%',
                     width: '100%',
@@ -181,7 +180,7 @@ export default function HomeScreen() {
             }
 
             function onPlayerReady(event) {
-                console.log('Player Ready. Autoplaying...');
+                // Player Ready
                 playerReady = true;
                 
                 // Make sure the controls are visible - enhanced version
@@ -199,7 +198,7 @@ export default function HomeScreen() {
                         ".ytp-gradient-bottom { opacity: 1 !important; visibility: visible !important; display: block !important; }" +
                         ".html5-video-player .ytp-large-play-button { opacity: 1 !important; visibility: visible !important; display: block !important; }";
                     document.head.appendChild(forceCSSControls);
-                    console.log('Injected force controls CSS');
+                    // Injected force controls CSS
                 } catch (e) {
                     console.error('Error injecting control visibility CSS:', e);
                 }
@@ -228,10 +227,10 @@ export default function HomeScreen() {
                 var state = event.data;
                 var currentTime = window.player && window.player.getCurrentTime ? window.player.getCurrentTime() : 0;
                 window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerStateChange', state: state, currentTime: currentTime }));
-                console.log('Player state changed:', state, 'isClip:', isClip, 'start:', initialStartSeconds, 'end:', initialEndSeconds);
+                // Player state changed
 
                 if (state === YT.PlayerState.ENDED && isClip && initialStartSeconds !== null) {
-                    console.log('Clip ended, seeking to start:', initialStartSeconds);
+                    // Clip ended, seeking to start
                     window.player.seekTo(initialStartSeconds, true);
                     window.player.playVideo(); 
                     window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'clipLooped' }));
@@ -261,7 +260,7 @@ export default function HomeScreen() {
                   if (isClip && initialEndSeconds !== null && initialStartSeconds !== null) {
                     // Add a small buffer (0.2s) to ensure we don't miss the loop point
                     if (currentTime >= initialEndSeconds - 0.2) {
-                      console.log('Clip end time reached, looping to start:', initialStartSeconds);
+                      // Clip end time reached, looping to start
                       window.player.seekTo(initialStartSeconds, true);
                       window.player.playVideo();
                       window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'clipLooped' }));
@@ -292,7 +291,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!currentVideo) {
       // This means we are leaving the video editor view (e.g. after saving or closing)
-      console.log("[HomeScreen currentVideo Effect] currentVideo is null. Resetting isClipLoadingFromRouteNav, initialClipStartTime, initialClipEndTime.");
+      // CurrentVideo is null. Resetting related state
       if (isClipLoadingFromRouteNav) {
         setIsClipLoadingFromRouteNav(false); // Reset if it was true
       }
@@ -345,7 +344,7 @@ export default function HomeScreen() {
 
       const { videoId, title, startTime, endTime, thumbnailUrl, description } = route.params;
 
-      console.log(`[HomeScreen Route Effect] Navigating to clip: videoId=${videoId}, title=${title}, startTime=${startTime}, endTime=${endTime}, thumb=${thumbnailUrl}, desc=${description}`);
+      // Navigating to clip
       
       const navigatedClipData: VideoItem = {
         id: { videoId: videoId },
@@ -383,7 +382,7 @@ export default function HomeScreen() {
       // This case means some clip parameters were missing, which shouldn't happen for a valid clip navigation.
       // It might be a regular video selection if only videoId is present.
       // For safety, ensure isClipLoadingFromRouteNav is false if it's not a complete clip load.
-      console.log(`[HomeScreen Route Effect] videoId '${route.params.videoId}' present but not all clip params. Assuming not a clip navigation from saved.`);
+      // Not a complete clip navigation
       // If we previously thought it was a clip nav but params are now incomplete, reset.
       if (isClipLoadingFromRouteNav) setIsClipLoadingFromRouteNav(false);
     }
@@ -392,21 +391,21 @@ export default function HomeScreen() {
   // Effect to set initialClipEndTime when videoDuration becomes available for a new video
   useEffect(() => {
 
-    console.log(`[HomeScreen videoDuration Effect] videoDuration: ${videoDuration}, initialClipEndTime: ${initialClipEndTime}, isClipLoadingFromRouteNav: ${isClipLoadingFromRouteNav}, initialClipStartTime: ${initialClipStartTime}`);
+    // VideoDuration effect triggered
 
     let changedEndTime = false;
     if (videoDuration > 0 && initialClipEndTime === undefined && !isClipLoadingFromRouteNav) {
-      console.log(`[HomeScreen videoDuration Effect] Setting initialClipEndTime for new video to: ${videoDuration}`);
+      // Setting initialClipEndTime for new video
       setInitialClipEndTime(videoDuration);
       changedEndTime = true;
     } else if (videoDuration > 0 && initialClipEndTime !== undefined && videoDuration !== initialClipEndTime && !isClipLoadingFromRouteNav) {
-      console.log(`[HomeScreen videoDuration Effect] videoDuration changed for a new video. Updating initialClipEndTime from ${initialClipEndTime} to ${videoDuration}`);
+      // VideoDuration changed, updating initialClipEndTime
       setInitialClipEndTime(videoDuration);
       changedEndTime = true;
     }
 
     if (changedEndTime) {
-      console.log(`[HomeScreen videoDuration Effect] initialClipEndTime changed, resetting videoPlayerReady to false and currentVideoTime to ${initialClipStartTime || 0}.`);
+      // InitialClipEndTime changed, resetting player state
       setVideoPlayerReady(false);
       setCurrentVideoTime(initialClipStartTime || 0); // Reset to start of clip or 0
     }
@@ -439,7 +438,7 @@ export default function HomeScreen() {
       clips.push(newClip);
       
       await AsyncStorage.setItem('savedClips', JSON.stringify(clips));
-      console.log('Clip saved successfully:', newClip);
+      // Clip saved successfully
       Alert.alert('Clip Saved', `"${title}" has been saved.`);
       // After saving, clear currentVideo to return to search/list view
       // This is already handled by the .then(() => setCurrentVideo(null)) in the onSave prop
@@ -471,21 +470,16 @@ export default function HomeScreen() {
   const handleMessage = (event: any) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
-      console.log('[HomeScreen handleMessage PARSED]:', message); // Log the parsed message
-      console.log('[HomeScreen handleMessage] Checking message.event:', message.event);
+      // Handling message from WebView
 
       if (message.event === 'playerReady') {
-        console.log('[HomeScreen handleMessage] Player is ready. Message:', message);
-        if (message.duration !== null && typeof message.duration === 'number' && message.duration > 0) {
-          console.log('[HomeScreen handleMessage] playerReady: Setting videoDuration to', message.duration);
+        // Player is ready
+        if (message.duration && !isNaN(message.duration) && message.duration > 0) {
           setVideoDuration(message.duration);
-        } else {
-          console.log('[HomeScreen handleMessage] playerReady: Duration not found, invalid, or zero in message. Duration:', message.duration);
         }
       } else if (message.event === 'playerFullyReady') {
-        console.log('[HomeScreen handleMessage] Player is fully ready. Message:', message);
+        // Player is fully ready
         // Consider if duration should also be set here as a fallback, if available and valid.
-        // if (message.duration !== null && typeof message.duration === 'number' && message.duration > 0) {
         //   console.log('[HomeScreen handleMessage] playerFullyReady: Setting videoDuration to', message.duration);
         //   setVideoDuration(message.duration); 
         // }
@@ -497,16 +491,16 @@ export default function HomeScreen() {
           // console.log('Current time updated from WebView:', message.time); // Kept commented for less verbose logs
         }
       } else if (message.event === 'clipEnded') {
-        console.log('Clip ended message received in HomeScreen');
+        // Clip ended message received
         // You might want to add logic here, e.g., replay, go to next, etc.
       } else if (message.event === 'playerStateChange') {
-        console.log('[HomeScreen handleMessage] Player state changed:', message.state, 'at time:', message.currentTime);
+        // Player state changed
         if (message.currentTime !== null && typeof message.currentTime === 'number') {
           setCurrentVideoTime(message.currentTime);
         }
         // YT.PlayerState.ENDED is 0, YT.PlayerState.PLAYING is 1, YT.PlayerState.PAUSED is 2, etc.
         if (message.state === 0 && message.clipLooped) { // 0 corresponds to YT.PlayerState.ENDED
-          console.log('[HomeScreen handleMessage] Clip looped in WebView');
+          // Clip looped in WebView
           // Potentially track loop count or other actions here if needed
         }
       } else if (message.event === 'openInYouTube') {
@@ -516,9 +510,9 @@ export default function HomeScreen() {
         console.error('[HomeScreen handleMessage] Player Error:', message.data);
         Alert.alert('Player Error', `An error occurred with the video player. Code: ${message.data?.errorCode || 'Unknown'}`);
       } else if (message.event === 'log') { // For general logs from WebView
-        console.log('WebView Log:', message.message);
+        // WebView Log message received
       } else {
-        console.log('[HomeScreen handleMessage] Received unhandled message type:', message.event, 'Full message:', message);
+        // Received unhandled message type
       }
     } catch (error) { // Catch block for JSON.parse or other errors in handleMessage
 
@@ -815,11 +809,11 @@ export default function HomeScreen() {
 
   const onShouldStartLoadWithRequest = (request: any /* WebViewNavigation */) => {
     const { url } = request;
-    console.log('WebView attempting to load URL:', url);
+    // WebView attempting to load URL
 
     // Allow our initial HTML load (data URI or about:blank)
     if (url.startsWith('data:text/html') || url === 'about:blank') {
-      console.log('Allowing initial HTML load');
+      // Allowing initial HTML load
       return true;
     }
 
@@ -836,17 +830,17 @@ export default function HomeScreen() {
     ];
 
     if (allowedEmbedDomains.some(domain => url.startsWith(domain))) {
-      console.log('Allowing YouTube API/embed related URL:', url);
+      // Allowing YouTube API/embed related URL
       return true;
     }
 
     // Specifically block navigation to full YouTube watch pages or mobile site
     if (url.includes('youtube.com/watch') || url.startsWith('https://m.youtube.com') || url.includes('youtu.be/')) {
-      console.log('DENYING navigation to YouTube watch/mobile page:', url);
+      // DENYING navigation to YouTube watch/mobile page
       return false;
     }
     
-    console.log('WebView onShouldStartLoadWithRequest: Review and decide for URL:', url, '-> Defaulting to DENY.');
+    // Default to DENY for unhandled URLs
     // Default to false for unhandled cases to be safer.
     // If the player breaks, check console logs for URLs being denied that might be essential.
     return false;

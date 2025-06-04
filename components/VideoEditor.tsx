@@ -48,10 +48,10 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
 
   // Effect to initialize/reset startTime and endTime based on props or duration changes
   useEffect(() => {
-    console.log('[VideoEditor Init Effect] Props received - duration:', duration, 'initialStartTime:', initialStartTime, 'initialEndTime:', initialEndTime);
+    // Initialize with provided clip times or defaults
     const newStartTime = initialStartTime !== undefined ? initialStartTime : 0;
     const newEndTime = initialEndTime !== undefined ? initialEndTime : duration;
-    console.log('[VideoEditor Init Effect] Setting startTime to:', newStartTime, 'Setting endTime to:', newEndTime);
+    // Set start and end times
     setStartTime(newStartTime);
     setEndTime(newEndTime);
     // Update refs for immediate use if needed by other effects
