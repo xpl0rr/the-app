@@ -1,76 +1,55 @@
-import { StyleSheet, Image, Platform } from 'react-native';
+import { StyleSheet, Image, Platform, ScrollView } from 'react-native';
+import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
 
-// import { Collapsible } from '@/components/Collapsible';
-// import { ExternalLink } from '@/components/ExternalLink';
-// import ParallaxScrollView from '@/components/ParallaxScrollView';
-// Using ThemedView as a temporary replacement for ParallaxScrollView
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-// import { IconSymbol } from '@/components/ui/IconSymbol';
-
-export default function TabTwoScreen() {
+export default function ExploreScreen() {
   return (
     <ThemedView style={styles.container}>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title">About Looper</ThemedText>
+        </ThemedView>
 
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      
-      <ThemedText>
-        This app has two screens:{' '}
-        <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-        <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-      </ThemedText>
-      <ThemedText>
-        The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-        sets up the tab navigator.
-      </ThemedText>
-      {/* ExternalLink to Expo docs removed as component is missing */}
+        <ThemedView style={styles.section}>
+          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Welcome to Looper</ThemedText>
+          <ThemedText>Looper is a video clip manager that helps you save, organize, and loop YouTube clips for practice and reference.</ThemedText>
+        </ThemedView>
+        
+        <ThemedView style={styles.section}>
+          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Features</ThemedText>
+          
+          <ThemedText style={styles.feature}>• Save segments from YouTube videos</ThemedText>
+          <ThemedText style={styles.feature}>• Set precise start and end points</ThemedText>
+          <ThemedText style={styles.feature}>• Loop clips automatically</ThemedText>
+          <ThemedText style={styles.feature}>• AirPlay support for iOS</ThemedText>
+          <ThemedText style={styles.feature}>• Organize saved clips</ThemedText>
+          <ThemedText style={styles.feature}>• Built-in practice timer</ThemedText>
+        </ThemedView>
 
-      <ThemedText>
-        You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-        <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-      </ThemedText>
+        <ThemedView style={styles.section}>
+          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>How to Use</ThemedText>
+          
+          <ThemedText style={styles.instructionTitle}>Finding Videos:</ThemedText>
+          <ThemedText style={styles.instruction}>Search for YouTube videos in the Home tab.</ThemedText>
+          
+          <ThemedText style={styles.instructionTitle}>Creating Clips:</ThemedText>
+          <ThemedText style={styles.instruction}>1. Play a video and tap the edit button</ThemedText>
+          <ThemedText style={styles.instruction}>2. Set start and end points using the sliders</ThemedText>
+          <ThemedText style={styles.instruction}>3. Use the preview button to test your clip</ThemedText>
+          <ThemedText style={styles.instruction}>4. Save with a descriptive title</ThemedText>
+          
+          <ThemedText style={styles.instructionTitle}>Viewing Saved Clips:</ThemedText>
+          <ThemedText style={styles.instruction}>Access all saved clips in the Saved Clips tab.</ThemedText>
+          
+          <ThemedText style={styles.instructionTitle}>Using AirPlay:</ThemedText>
+          <ThemedText style={styles.instruction}>Tap the AirPlay button when watching a video and select your AirPlay device from Control Center.</ThemedText>
+        </ThemedView>
 
-      <ThemedText>
-        For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-        <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-        different screen densities
-      </ThemedText>
-      <Image source={require('@/assets/images/react-logo.png')} style={styles.image} />
-      {/* ExternalLink to React Native docs removed */}
-
-      <ThemedText>
-        Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-        <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-          custom fonts such as this one.
-        </ThemedText>
-      </ThemedText>
-      {/* ExternalLink to Expo fonts docs removed */}
-
-      <ThemedText>
-        This template has light and dark mode support. The{' '}
-        <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-        what the user's current color scheme is, and so you can adjust UI colors accordingly.
-      </ThemedText>
-      {/* ExternalLink to Expo color themes docs removed */}
-
-      <ThemedText>
-        This template includes an example of an animated component. The{' '}
-        <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-        the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-        library to create animations.
-      </ThemedText>
-
-      {Platform.select({
-        ios: (
-          <ThemedText>
-            The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-            component provides a parallax effect for the header image. (This component is currently missing)
-          </ThemedText>
-        ),
-      })}
+        <ThemedView style={styles.section}>
+          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Version</ThemedText>
+          <ThemedText>Looper v1.0.0</ThemedText>
+        </ThemedView>
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -78,15 +57,36 @@ export default function TabTwoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    backgroundColor: '#1a1a1a',
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-  image: {
-    alignSelf: 'center',
-    marginVertical: 16,
+  section: {
+    marginHorizontal: 16,
+    marginTop: 24,
+    paddingBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    marginBottom: 12,
+  },
+  feature: {
+    marginBottom: 8,
+    paddingLeft: 8,
+  },
+  instructionTitle: {
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  instruction: {
+    marginBottom: 4,
+    paddingLeft: 8,
   },
 });

@@ -43,4 +43,4 @@ const styles = StyleSheet.create({
     paddingBottom: 32, // Add padding for bottom safe area
     paddingTop: 4,
   },
-}); 
+});

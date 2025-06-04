@@ -14,6 +14,9 @@ interface SavedVideo {
   endTime?: number;
   isClip: boolean;
   savedAt: number;
+  originalVideoTitle?: string; // Original YouTube video title
+  thumbnailUrl?: string; // YouTube thumbnail URL for the video
+  description?: string; // Optional video description
 }
 
 // Define a type for the navigation parameters expected by the 'index' route

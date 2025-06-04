@@ -66,7 +66,7 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
     if (isPreviewingClip && videoPlayerReady) {
       // Ensure video starts playing from the designated startTime when preview begins
       if (webViewRef.current) {
-        console.log(`VideoEditor: Starting preview. Seeking to ${startTimeRef.current} and playing.`);
+        // Starting preview. Seeking and playing.
         webViewRef.current.injectJavaScript(`
           window.seekTo(${startTimeRef.current}, true);
           window.playVideo();
@@ -80,17 +80,17 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
         }
 
         // Log values for debugging using refs
-        console.log(`VideoEditor Loop Check: displayCurrentTime=${displayCurrentTimeRef.current}, endTime=${endTimeRef.current}, conditionMet=${displayCurrentTimeRef.current >= endTimeRef.current}`);
+        // Check if loop condition is met
 
         if (displayCurrentTimeRef.current >= endTimeRef.current && videoPlayerReady && webViewRef.current) { // Guard loop's seek/play
-          console.log(`VideoEditor Loop Condition MET. Seeking to ${startTimeRef.current} and playing.`);
+          // Loop condition met - seeking to start and playing
           webViewRef.current.injectJavaScript(`
             window.seekTo(${startTimeRef.current}, true);
             window.playVideo();
             true;
           `);
         } else if (webViewRef.current) {
-          // console.log('VideoEditor Loop Condition NOT MET.'); // Optional: can be noisy
+          // Loop condition not met
         }
       }, 500); // Check every 500ms
     } else {
@@ -163,10 +163,10 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
   };
 
   const handleSliderStartChange = (value: number) => {
-    console.log('[VideoEditor handleSliderStartChange] Received value:', value, 'Current endTime:', endTime);
+    // Handle slider start change
     // Prevent start time from exceeding end time
     const newStartTime = Math.min(value, endTime - 1);
-    console.log('[VideoEditor handleSliderStartChange] Setting startTime to:', newStartTime);
+    // Setting new start time
     setStartTime(newStartTime);
     
     // If currently previewing, update playback position
@@ -176,14 +176,14 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
   };
 
   const handleSliderEndChange = (value: number) => {
-    console.log('[VideoEditor handleSliderEndChange] Received value:', value, 'Current startTime:', startTime);
+    // Handle slider end change
     // Prevent end time from being less than start time
     const newEndTime = Math.max(value, startTime + 1);
-    console.log('[VideoEditor handleSliderEndChange] Setting endTime to:', newEndTime);
+    // Setting new end time
     setEndTime(newEndTime);
   };
 
-  console.log('[VideoEditor Render] startTime:', startTime, 'endTime:', endTime, 'duration:', duration, 'maxSliderValue:', Math.max(1, duration));
+  // VideoEditor current state values
   return (
     <ThemedView style={styles.expandedContainer}>
       {/* Title area */}

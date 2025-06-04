@@ -3,11 +3,8 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 
-// import { HapticTab } from '@/components/HapticTab';
-// import { IconSymbol } from '@/components/ui/IconSymbol';
-// import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { Colors } from '../../constants/Colors';
+import { useColorScheme } from '../../hooks/useColorScheme';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -42,7 +39,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="saved-clips"
         options={{
           title: 'Saved Clips',
           tabBarIcon: ({ color }) => <TabBarIcon name="clock-o" color={color} />,
@@ -52,6 +49,13 @@ export default function TabLayout() {
         name="explore"
         options={{
           tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <TabBarIcon name="gear" color={color} />,
         }}
       />
     </Tabs>

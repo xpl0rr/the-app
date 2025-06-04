@@ -414,26 +414,34 @@ export default function HomeScreen() {
   // Save clip to AsyncStorage
   const saveClip = async (title: string, startTime: number, endTime: number) => {
     if (!currentVideo || !currentVideo.id) {
-      console.error('Cannot save clip: currentVideo or currentVideo.id is null');
-      Alert.alert('Error', 'Could not save clip. Video data is missing.');
+      Alert.alert('Error', 'Could not save the clip. Video data is missing.');
       return;
     }
 
-    const newClip = {
-      id: Date.now().toString(), // Unique ID for this saved clip entry
-      videoId: currentVideo.id.videoId, // The actual YouTube video ID
-      title: title, // User-defined title for this clip
-      startTime: startTime,
-      endTime: endTime,
-      isClip: true, // Mark as a clip
-      savedAt: Date.now(), // Timestamp of when it was saved
-      // originalVideoTitle: currentVideo.snippet.title, // Not in SavedVideo interface in VideoStorage
-      // thumbnailUrl: currentVideo.snippet.thumbnails.default.url, // Not in SavedVideo interface in VideoStorage
-    };
-
     try {
-      const existingClipsJson = await AsyncStorage.getItem('savedClips');
-      const clips = existingClipsJson ? JSON.parse(existingClipsJson) : [];
+      let clips = [];
+      const existingClips = await AsyncStorage.getItem('savedClips');
+      if (existingClips) {
+        clips = JSON.parse(existingClips);
+      }
+
+      const videoId = currentVideo.id.videoId;
+      const videoTitle = currentVideo.snippet?.title || '';
+      const videoThumbnail = currentVideo.snippet?.thumbnails?.default?.url || '';
+      const videoDescription = currentVideo.snippet?.description || '';
+
+      const newClip = {
+        id: `clip_${Date.now()}`,
+        title,
+        videoId,
+        originalVideoTitle: videoTitle,
+        thumbnailUrl: videoThumbnail,
+        description: videoDescription,
+        startTime,
+        endTime,
+        isClip: true,
+        savedAt: Date.now()
+      };
       
       clips.push(newClip);
       
@@ -443,8 +451,8 @@ export default function HomeScreen() {
       // After saving, clear currentVideo to return to search/list view
       // This is already handled by the .then(() => setCurrentVideo(null)) in the onSave prop
     } catch (error) {
-      console.error('Error saving clip to AsyncStorage:', error);
-      Alert.alert('Save Error', 'Failed to save the clip. Please try again.');
+      console.error('Error saving clip:', error);
+      Alert.alert('Error', 'Could not save the clip. Please try again.');
     }
   };
 
