@@ -77,39 +77,39 @@ export default function HomeScreen() {
   // Function to generate HTML for YouTube player
   const getYoutubeHTML = (videoId: string, startSeconds?: number, endSeconds?: number) => {
     console.log('getYoutubeHTML called with videoId:', videoId, 'startSeconds:', startSeconds, 'endSeconds:', endSeconds);
-    let playerVars = {
-      'playsinline': 1,
-      'controls': 1, // Show controls
-      'rel': 0, // Do not show related videos
-      'showinfo': 0, // Do not show video title, uploader
-      'modestbranding': 1, // Minimal YouTube branding
-      'autoplay': 1, // Autoplay the video
-      'loop': 0, // Loop the video (handled by onPlayerStateChange for clips)
-      'fs': 0, // Disable fullscreen button
-      'iv_load_policy': 3, // Do not show video annotations
-      'start': startSeconds !== undefined ? Math.round(startSeconds) : undefined,
-      // 'end': endSeconds !== undefined ? Math.round(endSeconds) : undefined, // 'end' is problematic for looping, handled manually
+    const playerVars = {
+      autoplay: 1, // Auto-play the video
+      rel: 0, // Don't show related videos
+      showinfo: 0, // Hide video info
+      modestbranding: 1, // Hide YouTube logo
+      controls: 1, // Show player controls - REQUIRED for looping clips
+      fs: 0, // Disable fullscreen button
+      cc_load_policy: 0, // Hide closed captions by default
+      iv_load_policy: 3, // Hide video annotations
+      start: startSeconds || 0, // Start time of the video
+      playsinline: 1, // Play video inline (important for AirPlay support)
+      enablejsapi: 1, // Enable JavaScript API
     };
-
-    // If it's a clip (endSeconds is defined), set the playlist to the videoId to enable looping API
-    // if (endSeconds !== undefined) {
-    //   playerVars.playlist = videoId;
-    // }
 
     return `
     <!DOCTYPE html>
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <style>
             body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; overflow: hidden; }
             .video-container { position: relative; width: 100%; height: 100%; }
             iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; pointer-events: auto !important; }
-            /* Removed debug message display */
-            /* Stronger CSS to force controls visibility */
-            .ytp-chrome-bottom { opacity: 1 !important; visibility: visible !important; display: block !important; }
-            .ytp-gradient-bottom, .ytp-chrome-controls { opacity: 1 !important; visibility: visible !important; display: block !important; }
-            .ytp-large-play-button { opacity: 1 !important; visibility: visible !important; display: block !important; }
+            /* Inject CSS to help make sure YouTube controls are always visible and enhance AirPlay compatibility */
+            .ytp-chrome-bottom { opacity: 1 !important; display: block !important; }
+            .ytp-chrome-controls { opacity: 1 !important; display: flex !important; }
+            .ytp-gradient-bottom { opacity: 1 !important; display: block !important; }
+            /* AirPlay enhancements */
+            video { -webkit-airplay: allow !important; }
+            video::-webkit-media-controls { display: inline !important; }
+            video::-webkit-media-controls-airplay-button { display: inline !important; }
         </style>
     </head>
     <body>
@@ -865,38 +865,37 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.airPlayButtonContainer}
                   onPress={() => {
-                    // To handle AirPlay in iOS, we need to manipulate the WebView with explicit AirPlay commands
+                    // This is a more direct approach to triggering AirPlay
+                    Alert.alert(
+                      'AirPlay Instructions', 
+                      'To use AirPlay with this video:\n\n1. Swipe DOWN from the top-right corner of your screen to open Control Center\n2. Tap the AirPlay button (rectangle with triangle)\n3. Select your AirPlay device\n\nThe video should then play on your external display while maintaining loop settings.',
+                      [
+                        { text: 'OK', style: 'default' }
+                      ]
+                    );
+                    
+                    // Also try to force fullscreen mode which sometimes helps trigger system AirPlay
                     if (webViewRef.current) {
-                      // First, set allowsInlineMediaPlayback and allowsAirPlayForMediaPlayback again to ensure they're enabled
-                      // Then inject JavaScript that attempts to trigger AirPlay using iOS' built-in AirPlay controls
                       webViewRef.current.injectJavaScript(`
-                        // Force video element to have AirPlay enabled
                         try {
-                          const videos = document.getElementsByTagName('video');
-                          if (videos.length > 0) {
-                            // iOS Safari specific attribute
-                            videos[0].setAttribute('x-webkit-airplay', 'allow');
-                            
-                            // Try to show system AirPlay UI
-                            if (videos[0].webkitShowPlaybackTargetPicker) {
-                              videos[0].webkitShowPlaybackTargetPicker();
-                              window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'airPlayPickerShown' }));
-                            } else {
-                              window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'airPlayError', message: 'AirPlay API not available' }));
-                            }
-                          } else {
-                            window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'airPlayError', message: 'No video element found' }));
+                          // Try to make the video more AirPlay friendly
+                          const iframe = document.querySelector('iframe');
+                          if (iframe) {
+                            iframe.setAttribute('allowfullscreen', 'true');
+                            // Some devices respond better to this approach
+                            iframe.style.position = 'fixed';
+                            iframe.style.top = '0';
+                            iframe.style.left = '0';
+                            iframe.style.width = '100%';
+                            iframe.style.height = '100%';
+                            iframe.style.zIndex = '10000';
                           }
-                        } catch (e) {
-                          window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'airPlayError', message: e.toString() }));
+                          true;
+                        } catch(e) {
+                          console.error('AirPlay setup error:', e);
+                          true;
                         }
-                        true;
                       `);
-                    } else {
-                      Alert.alert(
-                        'AirPlay Error', 
-                        'Video player is not ready yet. Please try again when the video is playing.'
-                      );
                     }
                   }}
                 >
