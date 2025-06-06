@@ -188,10 +188,16 @@ export function VideoEditor({ videoId, title, duration, currentTime: propCurrent
     <ThemedView style={styles.expandedContainer}>
       {/* Title area */}
       <View style={styles.titleRow}>
-        <ThemedText style={styles.videoTitle}>{title}</ThemedText>
+        <ThemedText 
+          style={styles.videoTitle} 
+          numberOfLines={2} 
+          ellipsizeMode="tail"
+        >
+          {title}
+        </ThemedText>
         <TouchableOpacity 
           style={styles.titleCloseButton}
-          onPress={onClose} // Now properly closes without saving
+          onPress={onClose}
         >
           <Ionicons name="close" size={18} color="#fff" />
         </TouchableOpacity>
@@ -322,14 +328,18 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start', // Changed from center to flex-start to better align with multi-line text
     marginBottom: 10,
+    maxHeight: 60, // Limit the maximum height of the title row
+    overflow: 'hidden', // Ensure content doesn't overflow
   },
   videoTitle: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
     flex: 1,
+    marginRight: 8, // Add some margin to separate from the close button
+    lineHeight: 22, // Improved line height for readability
   },
   titleCloseButton: {
     width: 30,

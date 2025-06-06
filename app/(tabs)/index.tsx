@@ -205,6 +205,15 @@ export default function HomeScreen() {
                 
                 window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerReady', duration: window.player.getDuration() }));
                 
+                // Ensure the video is playing
+                try {
+                    if (window.player && window.player.playVideo) {
+                        window.player.playVideo();
+                    }
+                } catch (e) {
+                    console.error('Error ensuring video plays:', e);
+                }
+                
                 // Ensure controls are actually visible before reporting ready
                 setTimeout(() => {
                     // Try to force show controls again
@@ -216,6 +225,15 @@ export default function HomeScreen() {
                         } catch (e) { console.error('Error forcing controls visibility in timeout:', e); }
                     }
                     window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerFullyReady' }));
+                    
+                    // Ensure the video is still playing after initialization
+                    try {
+                        if (window.player && window.player.playVideo) {
+                            window.player.playVideo();
+                        }
+                    } catch (e) {
+                        console.error('Error ensuring video plays after timeout:', e);
+                    }
                 }, 1000); // Increased delay to ensure the player is fully initialized
                 
                 document.getElementById('message_container_test').style.color = 'blue';
@@ -223,12 +241,22 @@ export default function HomeScreen() {
                 return true;
             }
 
+            // Add a flag to prevent unwanted pauses during initialization
+            var isInitializing = true;
+            setTimeout(() => { isInitializing = false; }, 2000); // Reset after 2 seconds
+            
             function onPlayerStateChange(event) {
                 var state = event.data;
                 var currentTime = window.player && window.player.getCurrentTime ? window.player.getCurrentTime() : 0;
                 window.ReactNativeWebView.postMessage(JSON.stringify({ event: 'playerStateChange', state: state, currentTime: currentTime }));
                 // Player state changed
 
+                // If video paused during initialization, restart it
+                if (state === YT.PlayerState.PAUSED && isInitializing) {
+                    window.player.playVideo();
+                    return true;
+                }
+                
                 if (state === YT.PlayerState.ENDED && isClip && initialStartSeconds !== null) {
                     // Clip ended, seeking to start
                     window.player.seekTo(initialStartSeconds, true);
