@@ -2,7 +2,7 @@
 import "dotenv/config";
 
 export default ({ config }) => ({
-  /* ─────────────── basic metadata ─────────────── */
+  /* ───────────── basic metadata ───────────── */
   name: "Looper",
   slug: "looper",
   version: "1.0.0",
@@ -13,7 +13,7 @@ export default ({ config }) => ({
   scheme: "looper",
   userInterfaceStyle: "automatic",
 
-  /* ─────────────── secure keys & EAS project ───── */
+  /* ───────────── secure keys & EAS project ─── */
   extra: {
     ...(config.extra || {}),
     googleApiKey: process.env.GOOGLE_API_KEY,
@@ -22,23 +22,23 @@ export default ({ config }) => ({
     },
   },
 
-  /* ─────────────── iOS settings ─────────────── */
+  /* ─────────────── iOS settings ────────────── */
   ios: {
     ...config.ios,
-    bundleIdentifier: "com.xpl0rr.looper",
+    bundleIdentifier: "com.doug.looper",   // unique per-app!
     runtimeVersion: "1.0.0",
     supportsTablet: true,
     infoPlist: {
-      ...config.ios?.infoPlist,
-      ITSAppUsesNonExemptEncryption: false
+      ...(config.ios?.infoPlist || {}),
+      ITSAppUsesNonExemptEncryption: false,
     },
-    buildNumber: "1.0.0"
+    buildNumber: "1.0.0",
   },
 
-  /* ─────────────── Android settings ─────────── */
+  /* ────────────── Android settings ─────────── */
   android: {
     ...config.android,
-    package: "com.xpl0rr.looper",
+    package: "com.doug.looper",
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#ffffff",
@@ -46,14 +46,14 @@ export default ({ config }) => ({
     runtimeVersion: "1.0.0",
   },
 
-  /* ─────────────── Web build ─────────────── */
+  /* ─────────────── Web build ──────────────── */
   web: {
     bundler: "metro",
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
 
-  /* ─────────────── Plugins & flags ─────────── */
+  /* ───────────── Plugins & flags ───────────── */
   plugins: [
     "expo-router",
     [
@@ -68,7 +68,7 @@ export default ({ config }) => ({
   ],
   experiments: { typedRoutes: true },
 
-  /* ─────────────── OTA / owner ─────────────── */
+  /* ─────── OTA / owner (EAS Updates) ───────── */
   owner: "xplorr",
   updates: {
     url: "https://u.expo.dev/7cf84943-4995-4348-91d4-6a808797415b",
