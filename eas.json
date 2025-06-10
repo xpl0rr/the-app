@@ -22,8 +22,12 @@
       "channel": "production"
     },
     "release": {
+      "developmentClient": false,     
       "distribution": "internal",
-      "channel": "release"
+      "channel": "release",
+      "ios": {
+        "simulator": false
+      }
     }
   },
   "submit": {
